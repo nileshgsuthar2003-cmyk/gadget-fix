@@ -88,16 +88,10 @@ export function CustomerNav() {
           <ClipboardList className="h-[22px] w-[22px]" />
           My Repairs
         </Link>
-        <div className="relative flex justify-center">
-          <Link
-            to="/book"
-            className="animate-press absolute -top-6 flex h-14 w-14 flex-col items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-lifted)]"
-            aria-label="Book Repair"
-          >
-            <Plus className="h-6 w-6" />
-          </Link>
-          <span className="pb-2 pt-8 text-[10px] font-semibold text-muted-foreground">Book Repair</span>
-        </div>
+        <Link to="/book" className={item} activeProps={{ className: cn(item, active) }}>
+          <Plus className="h-[22px] w-[22px]" />
+          Book Repair
+        </Link>
         <Link to="/profile" className={item} activeProps={{ className: cn(item, active) }}>
           <User className="h-[22px] w-[22px]" />
           Profile
@@ -116,23 +110,23 @@ export function AdminNav() {
   return (
     <nav className="sticky bottom-0 z-20 mt-auto border-t border-border bg-card shadow-[var(--shadow-nav)]">
       <div className="grid grid-cols-5 px-1">
-        <Link to="/admin" activeOptions={{ exact: true }} className={item} activeProps={{ className: cn(item, active) }}>
+        <Link to={"/admin" as any} activeOptions={{ exact: true }} className={item} activeProps={{ className: cn(item, active) }}>
           <LayoutDashboard className="h-[22px] w-[22px]" />
           Dashboard
         </Link>
-        <Link to="/admin/requests" className={item} activeProps={{ className: cn(item, active) }}>
+        <Link to={"/admin/requests" as any} className={item} activeProps={{ className: cn(item, active) }}>
           <Wrench className="h-[22px] w-[22px]" />
           Requests
         </Link>
-        <Link to="/admin/appointments" className={item} activeProps={{ className: cn(item, active) }}>
+        <Link to={"/admin/appointments" as any} className={item} activeProps={{ className: cn(item, active) }}>
           <CalendarDays className="h-[22px] w-[22px]" />
           Schedule
         </Link>
-        <Link to="/admin/inventory" className={item} activeProps={{ className: cn(item, active) }}>
+        <Link to={"/admin/inventory" as any} className={item} activeProps={{ className: cn(item, active) }}>
           <Package className="h-[22px] w-[22px]" />
           Inventory
         </Link>
-        <Link to="/admin/more" className={item} activeProps={{ className: cn(item, active) }}>
+        <Link to={"/admin/more" as any} className={item} activeProps={{ className: cn(item, active) }}>
           <MoreHorizontal className="h-[22px] w-[22px]" />
           More
         </Link>

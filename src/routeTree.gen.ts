@@ -13,6 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BookRouteImport } from './routes/book'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RepairsIndexRouteImport } from './routes/repairs.index'
+import { Route as RepairsRepairIdRouteImport } from './routes/repairs.$repairId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +37,39 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsIndexRoute = RepairsIndexRouteImport.update({
+  id: '/repairs/',
+  path: '/repairs/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RepairsRepairIdRoute = RepairsRepairIdRouteImport.update({
+  id: '/repairs/$repairId',
+  path: '/repairs/$repairId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/book': typeof BookRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/repairs/$repairId': typeof RepairsRepairIdRoute
+  '/repairs/': typeof RepairsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/book': typeof BookRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/repairs/$repairId': typeof RepairsRepairIdRoute
+  '/repairs': typeof RepairsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +77,38 @@ export interface FileRoutesById {
   '/book': typeof BookRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/repairs/$repairId': typeof RepairsRepairIdRoute
+  '/repairs/': typeof RepairsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/book' | '/home' | '/login'
+  fullPaths:
+    | '/'
+    | '/book'
+    | '/home'
+    | '/login'
+    | '/profile'
+    | '/repairs/$repairId'
+    | '/repairs/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/book' | '/home' | '/login'
-  id: '__root__' | '/' | '/book' | '/home' | '/login'
+  to:
+    | '/'
+    | '/book'
+    | '/home'
+    | '/login'
+    | '/profile'
+    | '/repairs/$repairId'
+    | '/repairs'
+  id:
+    | '__root__'
+    | '/'
+    | '/book'
+    | '/home'
+    | '/login'
+    | '/profile'
+    | '/repairs/$repairId'
+    | '/repairs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +116,9 @@ export interface RootRouteChildren {
   BookRoute: typeof BookRoute
   HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
+  RepairsRepairIdRoute: typeof RepairsRepairIdRoute
+  RepairsIndexRoute: typeof RepairsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +151,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs/': {
+      id: '/repairs/'
+      path: '/repairs'
+      fullPath: '/repairs/'
+      preLoaderRoute: typeof RepairsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/repairs/$repairId': {
+      id: '/repairs/$repairId'
+      path: '/repairs/$repairId'
+      fullPath: '/repairs/$repairId'
+      preLoaderRoute: typeof RepairsRepairIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +180,9 @@ const rootRouteChildren: RootRouteChildren = {
   BookRoute: BookRoute,
   HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
+  RepairsRepairIdRoute: RepairsRepairIdRoute,
+  RepairsIndexRoute: RepairsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

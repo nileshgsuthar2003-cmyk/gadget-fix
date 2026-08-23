@@ -11,6 +11,7 @@ import {
   Speaker,
 } from "lucide-react";
 import { Card, SectionTitle, StatusBadge } from "@/components/ui";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { CustomerNav, Screen } from "@/components/shell";
 import { CUSTOMER_NAME, inr, popularServices, repairs } from "@/lib/data";
 
@@ -85,22 +86,27 @@ function Home() {
         {/* Popular services */}
         <div className="mt-7">
           <SectionTitle title="Popular Services" />
-          <div className="scrollbar-hide -mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
-            {popularServices.map((s) => {
-              const Icon = iconMap[s.icon] ?? Smartphone;
-              return (
-                <Link
-                  key={s.id}
-                  to="/book"
-                  className="animate-press flex w-[104px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-center shadow-[var(--shadow-card)]"
-                >
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="text-[11px] font-bold leading-tight text-foreground">{s.name}</span>
-                </Link>
-              );
-            })}
+          <div className="-mx-4">
+            <Carousel opts={{ dragFree: true }} className="w-full">
+              <CarouselContent className="px-4 pb-1">
+                {popularServices.map((s) => {
+                  const Icon = iconMap[s.icon] ?? Smartphone;
+                  return (
+                    <CarouselItem key={s.id} className="basis-[auto] pl-3 first:pl-0">
+                      <Link
+                        to="/book"
+                        className="animate-press flex w-[104px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-center shadow-[var(--shadow-card)]"
+                      >
+                        <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <span className="text-[11px] font-bold leading-tight text-foreground">{s.name}</span>
+                      </Link>
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+            </Carousel>
           </div>
         </div>
 
