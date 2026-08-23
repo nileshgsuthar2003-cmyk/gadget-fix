@@ -183,7 +183,7 @@ export const repairs: Repair[] = [
 ];
 
 export const adminRequests: Repair[] = [
-  repairs[0],
+  { ...repairs[0]! },
   {
     id: "REP-2026-001246",
     customer: "Priya Nair",
