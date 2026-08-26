@@ -1,0 +1,117 @@
+import React from 'react';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Home, User, ClipboardList, Plus } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
+
+import { RootStackParamList, RootTabParamList } from './types';
+import HomeScreen from '../screens/HomeScreen';
+import BookScreen from '../screens/BookScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import RepairScreen from '../screens/RepairScreen';
+import SplashScreen from '../screens/SplashScreen';
+import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
+import MyRepairsScreen from '../screens/MyRepairsScreen';
+
+const Tab = createBottomTabNavigator<RootTabParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function TabNavigator() {
+  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : 8;
+
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textMuted,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopWidth: 1,
+          borderTopColor: theme.cardBorder,
+          height: 56 + bottomPadding,
+          paddingBottom: bottomPadding,
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+          marginBottom: 2,
+        },
+        tabBarIconStyle: {
+          marginTop: 2,
+        }
+      }}
+    >
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />
+        }}
+      />
+      <Tab.Screen 
+        name="MyRepairs" 
+        component={MyRepairsScreen} 
+        options={{
+          tabBarLabel: 'My Repairs',
+          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />
+        }}
+      />
+      <Tab.Screen 
+        name="Book" 
+        component={BookScreen} 
+        options={{
+          tabBarLabel: 'Book Repair',
+          tabBarIcon: ({ color, size }) => <Plus color={color} size={size} />
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+export default function AppNavigator() {
+  const { isDark, theme } = useTheme();
+
+  const navigationTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: theme.background,
+      card: theme.surface,
+      text: theme.text,
+      border: theme.cardBorder,
+      primary: theme.primary,
+    },
+  };
+
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Tabs" component={TabNavigator} />
+        <Stack.Screen 
+          name="RepairDetails" 
+          component={RepairScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
