@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, Alert 
+  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Wrench, User, Mail, Lock, Eye, EyeOff, ChevronDown } from 'lucide-react-native';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function RegisterScreen({ navigation }: RootStackScreenProps<'Register'>) {
   const { theme, isDark } = useTheme();
+  const { register, isLoading } = useAuth();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -20,7 +22,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim()) {
       Alert.alert('Error', 'Please enter your first and last name.');
       return;
@@ -42,11 +44,23 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
       return;
     }
 
-    Alert.alert(
-      'Account Created',
-      `Welcome to Fixly, ${firstName}! Your account has been registered successfully.`,
-      [{ text: 'Get Started', onPress: () => navigation.replace('Tabs', { screen: 'Home' }) }]
-    );
+    const res = await register({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      password,
+    });
+
+    if (res.success) {
+      Alert.alert(
+        'Account Created! 🎉',
+        `Welcome to Fixly, ${firstName}! Your account is now active.`,
+        [{ text: 'Get Started', onPress: () => navigation.replace('Tabs', { screen: 'Home' }) }]
+      );
+    } else {
+      Alert.alert('Registration Failed', res.error || 'Unable to register account.');
+    }
   };
 
   const isFormValid = 
@@ -86,6 +100,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                   placeholderTextColor={theme.textMuted}
                   value={firstName}
                   onChangeText={setFirstName}
+                  editable={!isLoading}
                 />
               </View>
               <View style={[styles.inputWrapper, { flex: 1, marginLeft: 8, backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -95,6 +110,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                   placeholderTextColor={theme.textMuted}
                   value={lastName}
                   onChangeText={setLastName}
+                  editable={!isLoading}
                 />
               </View>
             </View>
@@ -111,6 +127,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                 autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
+                editable={!isLoading}
               />
             </View>
 
@@ -128,6 +145,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                 maxLength={10}
                 value={phone}
                 onChangeText={(text) => setPhone(text.replace(/[^0-9]/g, ''))}
+                editable={!isLoading}
               />
             </View>
 
@@ -141,6 +159,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
+                editable={!isLoading}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                 {showPassword ? (
@@ -161,6 +180,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                 secureTextEntry={!showConfirmPassword}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
+                editable={!isLoading}
               />
               <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeBtn}>
                 {showConfirmPassword ? (
@@ -176,13 +196,17 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
               style={[
                 styles.primaryButton, 
                 { backgroundColor: theme.primary },
-                !isFormValid && styles.buttonDisabled
+                (!isFormValid || isLoading) && styles.buttonDisabled
               ]} 
               onPress={handleRegister}
-              disabled={!isFormValid}
+              disabled={!isFormValid || isLoading}
               activeOpacity={0.8}
             >
-              <Text style={styles.primaryButtonText}>Register</Text>
+              {isLoading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Register</Text>
+              )}
             </TouchableOpacity>
 
             {/* Footer Row */}

@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, User, ClipboardList, Plus } from 'lucide-react-native';
+import { Home, User, Plus, ShoppingBag } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 
@@ -15,6 +15,8 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import MyRepairsScreen from '../screens/MyRepairsScreen';
+import BuyPhonesScreen from '../screens/BuyPhonesScreen';
+import SellPhoneScreen from '../screens/SellPhoneScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -56,11 +58,11 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="MyRepairs" 
-        component={MyRepairsScreen} 
+        name="BuyPhones" 
+        component={BuyPhonesScreen} 
         options={{
-          tabBarLabel: 'My Repairs',
-          tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} />
+          tabBarLabel: 'Buy Phones',
+          tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} />
         }}
       />
       <Tab.Screen 
@@ -105,8 +107,29 @@ export default function AppNavigator() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Tabs" component={TabNavigator} />
         <Stack.Screen 
+          name="MyRepairs" 
+          component={MyRepairsScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
           name="RepairDetails" 
           component={RepairScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="BuyPhones" 
+          component={BuyPhonesScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="SellPhone" 
+          component={SellPhoneScreen} 
           options={{ 
             headerShown: false,
           }}

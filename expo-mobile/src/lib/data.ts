@@ -302,3 +302,125 @@ export const appointmentDays = [
 export function inr(amount: number) {
   return "₹" + amount.toLocaleString("en-IN");
 }
+
+export interface RefurbishedPhone {
+  id: string;
+  brand: string;
+  model: string;
+  storage: string;
+  color: string;
+  condition: "Superb" | "Good" | "Fair";
+  batteryHealth: number;
+  originalPrice: number;
+  price: number;
+  warranty: string;
+  featured?: boolean;
+}
+
+export const refurbishedPhones: RefurbishedPhone[] = [
+  {
+    id: "RF-IP14-128",
+    brand: "Apple",
+    model: "iPhone 14",
+    storage: "128 GB",
+    color: "Midnight Black",
+    condition: "Superb",
+    batteryHealth: 94,
+    originalPrice: 69900,
+    price: 43999,
+    warranty: "6 Months Fixly Warranty",
+    featured: true,
+  },
+  {
+    id: "RF-IP13-128",
+    brand: "Apple",
+    model: "iPhone 13",
+    storage: "128 GB",
+    color: "Starlight White",
+    condition: "Good",
+    batteryHealth: 89,
+    originalPrice: 59900,
+    price: 36499,
+    warranty: "6 Months Fixly Warranty",
+    featured: true,
+  },
+  {
+    id: "RF-S23-256",
+    brand: "Samsung",
+    model: "Galaxy S23 5G",
+    storage: "256 GB",
+    color: "Phantom Black",
+    condition: "Superb",
+    batteryHealth: 96,
+    originalPrice: 79999,
+    price: 45999,
+    warranty: "6 Months Fixly Warranty",
+    featured: true,
+  },
+  {
+    id: "RF-OP11-256",
+    brand: "OnePlus",
+    model: "OnePlus 11 5G",
+    storage: "256 GB",
+    color: "Titan Black",
+    condition: "Superb",
+    batteryHealth: 92,
+    originalPrice: 61999,
+    price: 34999,
+    warranty: "6 Months Fixly Warranty",
+  },
+  {
+    id: "RF-PX8-128",
+    brand: "Google",
+    model: "Pixel 8",
+    storage: "128 GB",
+    color: "Hazel Green",
+    condition: "Good",
+    batteryHealth: 91,
+    originalPrice: 75999,
+    price: 38999,
+    warranty: "6 Months Fixly Warranty",
+  },
+  {
+    id: "RF-IP12-64",
+    brand: "Apple",
+    model: "iPhone 12",
+    storage: "64 GB",
+    color: "Deep Blue",
+    condition: "Fair",
+    batteryHealth: 85,
+    originalPrice: 49900,
+    price: 24999,
+    warranty: "3 Months Fixly Warranty",
+  },
+  {
+    id: "RF-S22-128",
+    brand: "Samsung",
+    model: "Galaxy S22",
+    storage: "128 GB",
+    color: "Green",
+    condition: "Good",
+    batteryHealth: 88,
+    originalPrice: 57999,
+    price: 26999,
+    warranty: "6 Months Fixly Warranty",
+  },
+];
+
+export const sellBasePrices: Record<string, number> = {
+  "iPhone 15": 42000,
+  "iPhone 14": 34000,
+  "iPhone 13": 26000,
+  "iPhone 12": 19000,
+  "iPhone 11": 14000,
+  "Galaxy S24": 46000,
+  "Galaxy S23": 33000,
+  "Galaxy A54": 15000,
+  "OnePlus 12": 39000,
+  "OnePlus 11": 25000,
+  "Pixel 8": 28000,
+  "Pixel 7": 19000,
+  "Redmi Note 13": 9500,
+  "Vivo X100": 31000,
+};
+

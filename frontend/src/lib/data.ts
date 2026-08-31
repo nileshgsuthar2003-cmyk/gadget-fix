@@ -1,4 +1,4 @@
-// Shared sample data for the Fixly mobile repair prototype.
+// Shared sample data for the Fixly platform.
 
 export const CUSTOMER_NAME = "Rahul Sharma";
 
@@ -302,3 +302,134 @@ export const appointmentDays = [
 export function inr(amount: number) {
   return "₹" + amount.toLocaleString("en-IN");
 }
+
+// ----------------------------------------------------
+// Refurbished Phones & Marketplace Dataset
+// ----------------------------------------------------
+export interface RefurbishedPhone {
+  id: string;
+  brand: string;
+  model: string;
+  storage: string;
+  color: string;
+  condition: "Superb" | "Good" | "Fair";
+  price: number;
+  originalPrice: number;
+  batteryHealth: number;
+  warranty: string;
+  rating: number;
+  reviewsCount: number;
+}
+
+export const refurbishedPhones: RefurbishedPhone[] = [
+  {
+    id: "rf-1",
+    brand: "Apple",
+    model: "iPhone 14 Pro",
+    storage: "128 GB",
+    color: "Deep Purple",
+    condition: "Superb",
+    price: 64999,
+    originalPrice: 119900,
+    batteryHealth: 94,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.9,
+    reviewsCount: 142,
+  },
+  {
+    id: "rf-2",
+    brand: "Apple",
+    model: "iPhone 13",
+    storage: "128 GB",
+    color: "Midnight Blue",
+    condition: "Superb",
+    price: 39999,
+    originalPrice: 69900,
+    batteryHealth: 91,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.8,
+    reviewsCount: 284,
+  },
+  {
+    id: "rf-3",
+    brand: "Samsung",
+    model: "Galaxy S23 Ultra",
+    storage: "256 GB",
+    color: "Phantom Black",
+    condition: "Superb",
+    price: 59999,
+    originalPrice: 124999,
+    batteryHealth: 96,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.9,
+    reviewsCount: 96,
+  },
+  {
+    id: "rf-4",
+    brand: "OnePlus",
+    model: "OnePlus 11 5G",
+    storage: "256 GB",
+    color: "Titan Black",
+    condition: "Good",
+    price: 31999,
+    originalPrice: 61999,
+    batteryHealth: 88,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.7,
+    reviewsCount: 78,
+  },
+  {
+    id: "rf-5",
+    brand: "Google",
+    model: "Pixel 7 Pro",
+    storage: "128 GB",
+    color: "Hazel",
+    condition: "Superb",
+    price: 34999,
+    originalPrice: 84999,
+    batteryHealth: 92,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.8,
+    reviewsCount: 65,
+  },
+  {
+    id: "rf-6",
+    brand: "Samsung",
+    model: "Galaxy Z Flip 5",
+    storage: "256 GB",
+    color: "Mint",
+    condition: "Good",
+    price: 46999,
+    originalPrice: 99999,
+    batteryHealth: 89,
+    warranty: "6 Months Fixly Warranty",
+    rating: 4.6,
+    reviewsCount: 52,
+  },
+];
+
+export const sellBasePrices: Record<string, number> = {
+  "iPhone 16": 48000,
+  "iPhone 15": 38000,
+  "iPhone 14": 31000,
+  "iPhone 13": 25000,
+  "iPhone 12": 18000,
+  "iPhone 11": 12000,
+  "Galaxy S24": 42000,
+  "Galaxy S23": 32000,
+  "Galaxy A54": 14000,
+  "Galaxy Note 20": 16000,
+  "Galaxy Z Flip 5": 34000,
+  "OnePlus 12": 36000,
+  "OnePlus 11": 24000,
+  "OnePlus Nord 3": 13000,
+  "OnePlus 10 Pro": 19000,
+  "Pixel 9": 41000,
+  "Pixel 8 Pro": 35000,
+  "Pixel 8": 28000,
+  "Pixel 7": 19000,
+  "Nothing Phone 2": 18000,
+  "Nothing Phone 2a": 13000,
+  "Xiaomi 14": 29000,
+  "Redmi Note 13": 9500,
+};

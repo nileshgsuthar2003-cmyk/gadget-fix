@@ -4,7 +4,7 @@ import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigat
 
 export type RootTabParamList = {
   Home: undefined;
-  MyRepairs: undefined;
+  BuyPhones: undefined;
   Book: undefined;
   Profile: undefined;
 };
@@ -14,7 +14,10 @@ export type RootStackParamList = {
   Login: undefined;
   Register: undefined;
   Tabs: NavigatorScreenParams<RootTabParamList>;
+  MyRepairs: undefined;
   RepairDetails: { repairId: string };
+  BuyPhones: undefined;
+  SellPhone: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

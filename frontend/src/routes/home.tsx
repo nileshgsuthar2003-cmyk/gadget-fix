@@ -9,19 +9,28 @@ import {
   Search,
   Smartphone,
   Speaker,
+  ShoppingBag,
+  Zap,
+  ShieldCheck,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  Star,
+  CheckCircle2,
+  Wrench,
 } from "lucide-react";
 import { Card, SectionTitle, StatusBadge } from "@/components/ui";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { CustomerNav, Screen } from "@/components/shell";
+import { CustomerNav, Header, Screen } from "@/components/shell";
 import { CUSTOMER_NAME, inr, popularServices, repairs } from "@/lib/data";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
     meta: [
-      { title: "Home — Fixly" },
-      { name: "description", content: "Book a phone repair, browse services with transparent starting prices and track your current repair." },
-      { property: "og:title", content: "Home — Fixly" },
-      { property: "og:description", content: "Book a phone repair and track it live with Fixly." },
+      { title: "Fixly — Fast, Reliable, Trusted Mobile Repair & Marketplace" },
+      { name: "description", content: "Book doorstep mobile phone repairs, buy certified refurbished phones, or sell your old phone for instant cash." },
+      { property: "og:title", content: "Fixly — Mobile Repair & Marketplace" },
+      { property: "og:description", content: "Book phone repairs and buy refurbished devices with 6-month warranty." },
     ],
   }),
   component: Home,
@@ -37,9 +46,10 @@ const iconMap: Record<string, typeof Smartphone> = {
 };
 
 const browseServices = [
-  { name: "Screen Replacement", from: 999, note: "Original & compatible parts" },
-  { name: "Battery Replacement", from: 799, note: "6-month warranty" },
-  { name: "Charging Repair", from: 499, note: "Same-day fix" },
+  { name: "Screen Replacement", from: 999, note: "Original & high-grade compatible displays", time: "30 Mins" },
+  { name: "Battery Replacement", from: 799, note: "100% health & 6-month warranty", time: "20 Mins" },
+  { name: "Charging Port Repair", from: 499, note: "Clean, solder & port replacement", time: "25 Mins" },
+  { name: "Camera Module Fix", from: 899, note: "Sensor & glass lens repair", time: "40 Mins" },
 ];
 
 function Home() {
@@ -48,133 +58,185 @@ function Home() {
 
   return (
     <Screen>
-      <div className="flex-1 px-4 pb-6 pt-5">
-        {/* Greeting */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">Hello, {firstName} 👋</p>
-            <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-foreground">
-              How can we help your phone today?
+      <Header title="Fixly" />
+
+      <div className="flex-1 px-4 py-6 md:px-8 max-w-7xl mx-auto w-full space-y-10">
+        
+        {/* Hero Section */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/5 to-card border border-border/80 p-6 md:p-12 shadow-sm">
+          <div className="max-w-3xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-1 text-xs font-bold text-primary">
+              <Sparkles className="h-3.5 w-3.5" /> India's #1 Doorstep Device Service
+            </div>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
+              Fast, Reliable & Trusted <br className="hidden sm:inline" />
+              <span className="text-primary">Phone Repairs</span> at Your Doorstep.
             </h1>
-          </div>
-          <button className="animate-press relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border bg-card" aria-label="Notifications">
-            <Bell className="h-5 w-5 text-foreground" />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-destructive" />
-          </button>
-        </div>
+            <p className="text-sm md:text-base text-muted-foreground max-w-xl leading-relaxed">
+              Book certified doorstep repairs in 60 seconds, buy quality-checked refurbished phones, or get instant cash for your old phone.
+            </p>
 
-        {/* Search */}
-        <Link
-          to="/book"
-          className="mt-4 flex h-12 items-center gap-3 rounded-2xl border border-border bg-card px-4 text-sm text-muted-foreground shadow-[var(--shadow-card)]"
-        >
-          <Search className="h-4.5 w-4.5" />
-          Search repair services...
-        </Link>
-
-
-        {/* Popular services */}
-        <div className="mt-7">
-          <SectionTitle title="Popular Services" />
-          <div className="-mx-4">
-            <Carousel opts={{ dragFree: true }} className="w-full">
-              <CarouselContent className="px-4 pb-1">
-                {popularServices.map((s) => {
-                  const Icon = iconMap[s.icon] ?? Smartphone;
-                  return (
-                    <CarouselItem key={s.id} className="basis-[auto] pl-3 first:pl-0">
-                      <Link
-                        to="/book"
-                        className="animate-press flex w-[104px] shrink-0 flex-col items-center gap-2 rounded-2xl border border-border bg-card p-3.5 text-center shadow-[var(--shadow-card)]"
-                      >
-                        <span className="grid h-11 w-11 place-items-center rounded-xl bg-primary-soft text-primary">
-                          <Icon className="h-5 w-5" />
-                        </span>
-                        <span className="text-[11px] font-bold leading-tight text-foreground">{s.name}</span>
-                      </Link>
-                    </CarouselItem>
-                  );
-                })}
-              </CarouselContent>
-            </Carousel>
-          </div>
-        </div>
-
-        {/* Current repair */}
-        <div className="mt-7">
-          <SectionTitle title="My Current Repair" />
-          <Card className="p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-primary">#{current.id.replace("REP-2026-", "REP")}</p>
-                <p className="mt-1 truncate text-[15px] font-bold text-foreground">
-                  {current.device} · {current.service}
-                </p>
-              </div>
-              <StatusBadge status={current.status} />
-            </div>
-            <div className="mt-4">
-              <div className="mb-1.5 flex justify-between text-xs font-medium text-muted-foreground">
-                <span>Repair progress</span>
-                <span>60%</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div className="h-full w-[60%] rounded-full bg-primary" />
-              </div>
-            </div>
-            <Link to="/repairs/$repairId" params={{ repairId: current.id }}>
-              <span className="animate-press mt-4 flex h-11 w-full items-center justify-center rounded-xl bg-secondary text-sm font-semibold text-secondary-foreground">
-                Track Repair
-              </span>
-            </Link>
-          </Card>
-        </div>
-
-        {/* Browse services */}
-        <div className="mt-7">
-          <SectionTitle title="Browse Services" action={<Link to="/book" className="text-[13px] font-semibold text-primary">See all</Link>} />
-          <div className="space-y-3">
-            {browseServices.map((s) => (
-              <Link key={s.name} to="/book" className="animate-press block">
-                <Card className="flex items-center gap-3.5 p-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                    <Smartphone className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-foreground">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.note}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[11px] text-muted-foreground">From</p>
-                    <p className="text-sm font-extrabold text-primary">{inr(s.from)}</p>
-                  </div>
-                </Card>
+            {/* Quick CTAs */}
+            <div className="pt-2 flex flex-wrap gap-3">
+              <Link
+                to="/book"
+                className="inline-flex items-center gap-2 rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-transform active:scale-95"
+              >
+                <Wrench className="h-4 w-4" /> Book Repair Now
               </Link>
+              <Link
+                to="/buy"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-5 py-3.5 text-sm font-bold text-foreground hover:bg-accent transition-colors"
+              >
+                <ShoppingBag className="h-4 w-4 text-emerald-500" /> Buy Refurbished
+              </Link>
+              <Link
+                to="/sell"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-card px-5 py-3.5 text-sm font-bold text-foreground hover:bg-accent transition-colors"
+              >
+                <Zap className="h-4 w-4 text-amber-500" /> Sell Old Phone
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* 2-Column Marketplace Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Buy Card */}
+          <Link
+            to="/buy"
+            className="group relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 md:p-8 hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-500 group-hover:scale-105 transition-transform">
+                  <ShoppingBag className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+                  Up to 50% Off
+                </span>
+              </div>
+              <h2 className="text-xl font-extrabold text-foreground">Buy Refurbished Phones</h2>
+              <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-relaxed">
+                32 Quality Checks Passed • 6 Months Fixly Warranty • 7 Days Replacement.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">
+              Browse Phones <ArrowRight className="h-4 w-4" />
+            </div>
+          </Link>
+
+          {/* Sell Card */}
+          <Link
+            to="/sell"
+            className="group relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 md:p-8 hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500/10 text-amber-500 group-hover:scale-105 transition-transform">
+                  <Zap className="h-6 w-6" />
+                </div>
+                <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs font-extrabold text-amber-600 dark:text-amber-400">
+                  Instant Cash
+                </span>
+              </div>
+              <h2 className="text-xl font-extrabold text-foreground">Sell Your Old Phone</h2>
+              <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-relaxed">
+                Instant calculated price valuation • Free doorstep pickup • Direct UPI transfer.
+              </p>
+            </div>
+            <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:translate-x-1 transition-transform">
+              Get Price Quote <ArrowRight className="h-4 w-4" />
+            </div>
+          </Link>
+        </div>
+
+        {/* Popular Repair Services */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-extrabold text-foreground">Popular Repair Services</h2>
+              <p className="text-xs text-muted-foreground">Doorstep and express in-store service available</p>
+            </div>
+            <Link to="/book" className="text-xs font-bold text-primary hover:underline">View all</Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+            {popularServices.map((s) => {
+              const Icon = iconMap[s.icon] ?? Smartphone;
+              return (
+                <Link
+                  key={s.id}
+                  to="/book"
+                  className="flex flex-col items-center justify-center p-4 rounded-2xl border border-border bg-card text-center hover:shadow-md hover:border-primary/50 transition-all group"
+                >
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary group-hover:scale-110 transition-transform mb-3">
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <span className="text-xs font-bold text-foreground leading-tight">{s.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Live Repair Tracking Widget */}
+        {current && (
+          <div className="rounded-3xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold text-primary">#{current.id}</span>
+                  <StatusBadge status={current.status} />
+                </div>
+                <h3 className="text-lg font-bold text-foreground">{current.device} · {current.service}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Appointment: {current.appointment} at {current.time}</p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="w-48 hidden md:block">
+                  <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1">
+                    <span>Progress</span>
+                    <span>60%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-primary rounded-full w-[60%]" />
+                  </div>
+                </div>
+
+                <Link
+                  to="/repairs/$repairId"
+                  params={{ repairId: current.id }}
+                  className="inline-flex items-center justify-center rounded-xl bg-secondary px-5 py-2.5 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                >
+                  Track Repair
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Why Fixly Trust Guarantees */}
+        <div className="pt-4">
+          <h2 className="text-xl font-extrabold text-foreground text-center mb-6">Why Thousands Trust Fixly</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { title: "6 Months Warranty", desc: "Comprehensive warranty on all replaced parts.", icon: ShieldCheck },
+              { title: "30-Min Express Fix", desc: "Doorstep repairs completed in front of you.", icon: Clock },
+              { title: "Certified Parts", desc: "100% genuine and high-grade tested components.", icon: CheckCircle2 },
+              { title: "Zero Advance Payment", desc: "Pay only after you verify the repaired phone.", icon: Sparkles },
+            ].map((g, idx) => (
+              <div key={idx} className="p-5 rounded-2xl border border-border bg-card space-y-2">
+                <g.icon className="h-6 w-6 text-primary mb-2" />
+                <h3 className="text-sm font-bold text-foreground">{g.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{g.desc}</p>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Recent repairs */}
-        <div className="mt-7">
-          <SectionTitle title="Recent Repairs" action={<Link to="/repairs" className="text-[13px] font-semibold text-primary">View all</Link>} />
-          <div className="space-y-3">
-            {repairs.slice(1, 3).map((r) => (
-              <Link key={r.id} to="/repairs/$repairId" params={{ repairId: r.id }} className="animate-press block">
-                <Card className="flex items-center gap-3.5 p-4">
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-                    <Smartphone className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-foreground">{r.device}</p>
-                    <p className="text-xs text-muted-foreground">{r.service}</p>
-                  </div>
-                  <StatusBadge status={r.status} />
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
       </div>
+
       <CustomerNav />
     </Screen>
   );

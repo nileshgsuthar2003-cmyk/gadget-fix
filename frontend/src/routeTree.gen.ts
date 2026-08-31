@@ -10,10 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BookRouteImport } from './routes/book'
+import { Route as BookingSuccessRouteImport } from './routes/booking-success'
+import { Route as BuyRouteImport } from './routes/buy'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as SellRouteImport } from './routes/sell'
 import { Route as RepairsIndexRouteImport } from './routes/repairs.index'
 import { Route as RepairsRepairIdRouteImport } from './routes/repairs.$repairId'
 
@@ -22,9 +26,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookRoute = BookRouteImport.update({
   id: '/book',
   path: '/book',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingSuccessRoute = BookingSuccessRouteImport.update({
+  id: '/booking-success',
+  path: '/booking-success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BuyRoute = BuyRouteImport.update({
+  id: '/buy',
+  path: '/buy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HomeRoute = HomeRouteImport.update({
@@ -42,6 +61,11 @@ const ProfileRoute = ProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SellRoute = SellRouteImport.update({
+  id: '/sell',
+  path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RepairsIndexRoute = RepairsIndexRouteImport.update({
   id: '/repairs/',
   path: '/repairs/',
@@ -55,29 +79,41 @@ const RepairsRepairIdRoute = RepairsRepairIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/book': typeof BookRoute
+  '/booking-success': typeof BookingSuccessRoute
+  '/buy': typeof BuyRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/sell': typeof SellRoute
   '/repairs/$repairId': typeof RepairsRepairIdRoute
   '/repairs/': typeof RepairsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/book': typeof BookRoute
+  '/booking-success': typeof BookingSuccessRoute
+  '/buy': typeof BuyRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/sell': typeof SellRoute
   '/repairs/$repairId': typeof RepairsRepairIdRoute
   '/repairs': typeof RepairsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/book': typeof BookRoute
+  '/booking-success': typeof BookingSuccessRoute
+  '/buy': typeof BuyRoute
   '/home': typeof HomeRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
+  '/sell': typeof SellRoute
   '/repairs/$repairId': typeof RepairsRepairIdRoute
   '/repairs/': typeof RepairsIndexRoute
 }
@@ -85,38 +121,54 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/book'
+    | '/booking-success'
+    | '/buy'
     | '/home'
     | '/login'
     | '/profile'
+    | '/sell'
     | '/repairs/$repairId'
     | '/repairs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/book'
+    | '/booking-success'
+    | '/buy'
     | '/home'
     | '/login'
     | '/profile'
+    | '/sell'
     | '/repairs/$repairId'
     | '/repairs'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/book'
+    | '/booking-success'
+    | '/buy'
     | '/home'
     | '/login'
     | '/profile'
+    | '/sell'
     | '/repairs/$repairId'
     | '/repairs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   BookRoute: typeof BookRoute
+  BookingSuccessRoute: typeof BookingSuccessRoute
+  BuyRoute: typeof BuyRoute
   HomeRoute: typeof HomeRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
+  SellRoute: typeof SellRoute
   RepairsRepairIdRoute: typeof RepairsRepairIdRoute
   RepairsIndexRoute: typeof RepairsIndexRoute
 }
@@ -130,11 +182,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/book': {
       id: '/book'
       path: '/book'
       fullPath: '/book'
       preLoaderRoute: typeof BookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-success': {
+      id: '/booking-success'
+      path: '/booking-success'
+      fullPath: '/booking-success'
+      preLoaderRoute: typeof BookingSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/buy': {
+      id: '/buy'
+      path: '/buy'
+      fullPath: '/buy'
+      preLoaderRoute: typeof BuyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/home': {
@@ -158,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sell': {
+      id: '/sell'
+      path: '/sell'
+      fullPath: '/sell'
+      preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/repairs/': {
       id: '/repairs/'
       path: '/repairs'
@@ -177,10 +257,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   BookRoute: BookRoute,
+  BookingSuccessRoute: BookingSuccessRoute,
+  BuyRoute: BuyRoute,
   HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
+  SellRoute: SellRoute,
   RepairsRepairIdRoute: RepairsRepairIdRoute,
   RepairsIndexRoute: RepairsIndexRoute,
 }

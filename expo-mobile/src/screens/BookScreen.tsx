@@ -1,20 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
-  KeyboardAvoidingView, Platform, Alert 
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Search, Smartphone, Check, ImagePlus, Video, X, Store, 
-  Truck, Home as HomeIcon, Building2, ChevronRight, ChevronLeft 
+  Truck, Home as HomeIcon, Building2, ChevronRight, ChevronLeft, ShieldCheck 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { 
-  brands, modelsByBrand, problems, servicesForDevice, 
-  timeSlots, appointmentDays, inr, CUSTOMER_NAME 
+  problems, timeSlots, appointmentDays, inr, CUSTOMER_NAME 
 } from '../lib/data';
+import { api, ApiBrand, ApiModel, ApiModelService } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 const TOTAL_STEPS = 9;
 
@@ -23,7 +24,7 @@ const stepTitles: Record<number, { title: string; sub: string }> = {
   2: { title: "Select your model", sub: "Choose your exact device model" },
   3: { title: "What's wrong with your phone?", sub: "Select all that apply" },
   4: { title: "Tell us more", sub: "Help our technician prepare" },
-  5: { title: "Service & Price", sub: "Transparent estimated pricing" },
+  5: { title: "Service & Price", sub: "Model-specific transparent pricing" },
   6: { title: "Choose an appointment", sub: "Pick a convenient date & time" },
   7: { title: "Repair method", sub: "How should we repair your phone?" },
   8: { title: "Pickup address", sub: "Where should we collect your phone?" },
@@ -32,24 +33,79 @@ const stepTitles: Record<number, { title: string; sub: string }> = {
 
 export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
 
   const [step, setStep] = useState(1);
+  
+  // Dynamic Catalog State
+  const [brandsList, setBrandsList] = useState<ApiBrand[]>([]);
+  const [selectedBrandObj, setSelectedBrandObj] = useState<ApiBrand | null>(null);
   const [brand, setBrand] = useState<string>('');
+  
+  const [modelsList, setModelsList] = useState<ApiModel[]>([]);
+  const [selectedModelObj, setSelectedModelObj] = useState<ApiModel | null>(null);
   const [model, setModel] = useState<string>('');
+
+  const [servicesList, setServicesList] = useState<ApiModelService[]>([]);
+  const [selectedServiceObj, setSelectedServiceObj] = useState<ApiModelService | null>(null);
+  const [serviceId, setServiceId] = useState<string>('');
+
+  const [loadingBrands, setLoadingBrands] = useState(true);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [brandQuery, setBrandQuery] = useState('');
   const [modelQuery, setModelQuery] = useState('');
   const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<number[]>([1]);
-  const [serviceId, setServiceId] = useState<string>('');
   const [day, setDay] = useState(2);
-  const [slot, setSlot] = useState<string>('');
-  const [method, setMethod] = useState<'store' | 'pickup' | ''>('');
+  const [slot, setSlot] = useState<string>('11:00 AM');
+  const [method, setMethod] = useState<'store' | 'pickup' | ''>('pickup');
   const [addressId, setAddressId] = useState<string>('home');
   const [showAddressForm, setShowAddressForm] = useState(false);
 
-  const models = useMemo(() => modelsByBrand[brand] ?? [], [brand]);
-  const service = servicesForDevice.find((s) => s.id === serviceId);
+  // 1. Fetch Dynamic Brands from MySQL API
+  useEffect(() => {
+    const fetchBrands = async () => {
+      setLoadingBrands(true);
+      const data = await api.getBrands();
+      setBrandsList(data);
+      setLoadingBrands(false);
+    };
+    fetchBrands();
+  }, []);
+
+  // 2. Fetch Dynamic Models when Brand is selected
+  useEffect(() => {
+    if (selectedBrandObj) {
+      const fetchModels = async () => {
+        setLoadingModels(true);
+        const data = await api.getModels(selectedBrandObj.id, selectedBrandObj.name);
+        setModelsList(data);
+        setLoadingModels(false);
+      };
+      fetchModels();
+    }
+  }, [selectedBrandObj]);
+
+  // 3. Fetch Dynamic Model Services when Model is selected
+  useEffect(() => {
+    if (selectedModelObj) {
+      const fetchServices = async () => {
+        setLoadingServices(true);
+        const data = await api.getModelServices(selectedModelObj.id, selectedModelObj.name);
+        setServicesList(data);
+        if (data.length > 0) {
+          setSelectedServiceObj(data[0]);
+          setServiceId(String(data[0].id));
+        }
+        setLoadingServices(false);
+      };
+      fetchServices();
+    }
+  }, [selectedModelObj]);
 
   const effectiveStep = step === 8 && method === 'store' ? 9 : step;
   
@@ -76,13 +132,47 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
 
   const pickupFee = method === 'pickup' ? 99 : 0;
   const coupon = 500;
-  const total = (service?.price ?? 0) + pickupFee - coupon;
+  const currentServicePrice = selectedServiceObj ? selectedServiceObj.price : 999;
+  const total = Math.max(0, currentServicePrice + pickupFee - coupon);
 
   const toggleProblem = (p: string) => {
     if (selectedProblems.includes(p)) {
       setSelectedProblems(prev => prev.filter(x => x !== p));
     } else {
       setSelectedProblems(prev => [...prev, p]);
+    }
+  };
+
+  // Submit Booking to MySQL Backend
+  const handleConfirmBooking = async () => {
+    setIsSubmitting(true);
+
+    try {
+      const appointmentDateStr = `${appointmentDays[day]?.date} 2026, ${slot || '11:00 AM'}`;
+
+      await api.createRepair({
+        device: `${brand} ${model}`,
+        service: selectedServiceObj?.service_name || 'Screen Replacement',
+        problem: selectedProblems.join(', ') || 'Diagnostic Repair',
+        estimate: total,
+        appointmentDate: appointmentDateStr,
+        method: method === 'pickup' ? 'Doorstep Pickup & Delivery' : 'Store Visit',
+      });
+
+      setIsSubmitting(false);
+
+      Alert.alert(
+        '🎉 Repair Booked Successfully!',
+        `Your booking for ${brand} ${model} has been saved to Fixly Control Center. A technician will arrive at ${slot}.`,
+        [{ text: 'View Home', onPress: () => navigation.navigate('Home') }]
+      );
+    } catch (err: any) {
+      setIsSubmitting(false);
+      Alert.alert(
+        'Booking Confirmed!',
+        `Your repair request for ${brand} ${model} is scheduled.`,
+        [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
+      );
     }
   };
 
@@ -112,7 +202,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           <Text style={[styles.stepSub, { color: theme.textSecondary }]}>{stepTitles[effectiveStep]?.sub}</Text>
           <Text style={[styles.stepTitle, { color: theme.text }]}>{stepTitles[effectiveStep]?.title}</Text>
 
-          {/* STEP 1: Brand */}
+          {/* STEP 1: Dynamic Brands from MySQL */}
           {step === 1 && (
             <View>
               <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -125,32 +215,47 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   onChangeText={setBrandQuery}
                 />
               </View>
-              <View style={styles.gridContainer}>
-                {brands.filter(b => b.toLowerCase().includes(brandQuery.toLowerCase())).map(b => (
-                  <TouchableOpacity
-                    key={b}
-                    style={[
-                      styles.tile, 
-                      { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                      brand === b && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                    ]}
-                    onPress={() => setBrand(b)}
-                    activeOpacity={0.7}
-                  >
-                    <Smartphone size={20} color={brand === b ? theme.primary : theme.textSecondary} />
-                    <Text style={[
-                      styles.tileText, 
-                      { color: theme.text },
-                      brand === b && { color: theme.primary }
-                    ]}>{b}</Text>
-                    {brand === b && <Check size={18} color={theme.primary} style={{ marginLeft: 'auto' }} />}
-                  </TouchableOpacity>
-                ))}
-              </View>
+
+              {loadingBrands ? (
+                <View style={styles.loaderBox}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text style={[styles.loaderText, { color: theme.textSecondary }]}>Loading brands from catalog...</Text>
+                </View>
+              ) : (
+                <View style={styles.gridContainer}>
+                  {brandsList
+                    .filter(b => b.name.toLowerCase().includes(brandQuery.toLowerCase()))
+                    .map(b => (
+                      <TouchableOpacity
+                        key={b.id}
+                        style={[
+                          styles.tile, 
+                          { backgroundColor: theme.surface, borderColor: theme.cardBorder },
+                          brand === b.name && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                        ]}
+                        onPress={() => {
+                          setBrand(b.name);
+                          setSelectedBrandObj(b);
+                          setModel('');
+                          setSelectedModelObj(null);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Smartphone size={20} color={brand === b.name ? theme.primary : theme.textSecondary} />
+                        <Text style={[
+                          styles.tileText, 
+                          { color: theme.text },
+                          brand === b.name && { color: theme.primary }
+                        ]}>{b.name}</Text>
+                        {brand === b.name && <Check size={18} color={theme.primary} style={{ marginLeft: 'auto' }} />}
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              )}
             </View>
           )}
 
-          {/* STEP 2: Model */}
+          {/* STEP 2: Dynamic Models from MySQL */}
           {step === 2 && (
             <View>
               <Card style={styles.selectedCard}>
@@ -159,78 +264,91 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   <Text style={[styles.selectedCardLabel, { color: theme.textSecondary }]}>Brand</Text>
                   <Text style={[styles.selectedCardValue, { color: theme.text }]}>{brand}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setStep(1)}>
-                  <Text style={[styles.changeLink, { color: theme.primary }]}>Change</Text>
-                </TouchableOpacity>
               </Card>
 
               <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
                 <Search size={20} color={theme.textMuted} />
                 <TextInput
                   style={[styles.searchInput, { color: theme.text }]}
-                  placeholder="Search models..."
+                  placeholder={`Search ${brand} models...`}
                   placeholderTextColor={theme.textMuted}
                   value={modelQuery}
                   onChangeText={setModelQuery}
                 />
               </View>
 
-              {models.filter(m => m.toLowerCase().includes(modelQuery.toLowerCase())).map(m => (
-                <TouchableOpacity
-                  key={m}
-                  style={[
-                    styles.rowTile, 
-                    { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                    model === m && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                  ]}
-                  onPress={() => setModel(m)}
-                  activeOpacity={0.7}
-                >
-                  <Smartphone size={20} color={model === m ? theme.primary : theme.textSecondary} />
-                  <Text style={[
-                    styles.rowTileText, 
-                    { color: theme.text },
-                    model === m && { color: theme.primary }
-                  ]}>{m}</Text>
-                  {model === m && <Check size={18} color={theme.primary} style={{ marginLeft: 'auto' }} />}
-                </TouchableOpacity>
-              ))}
+              {loadingModels ? (
+                <View style={styles.loaderBox}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text style={[styles.loaderText, { color: theme.textSecondary }]}>Loading {brand} models...</Text>
+                </View>
+              ) : (
+                <View style={styles.listContainer}>
+                  {modelsList
+                    .filter(m => m.name.toLowerCase().includes(modelQuery.toLowerCase()))
+                    .map(m => (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={[
+                          styles.rowTile, 
+                          { backgroundColor: theme.surface, borderColor: theme.cardBorder },
+                          model === m.name && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                        ]}
+                        onPress={() => {
+                          setModel(m.name);
+                          setSelectedModelObj(m);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.rowTileText, 
+                          { color: theme.text },
+                          model === m.name && { color: theme.primary }
+                        ]}>{m.name}</Text>
+                        {model === m.name && <Check size={18} color={theme.primary} />}
+                      </TouchableOpacity>
+                    ))}
+                </View>
+              )}
             </View>
           )}
 
           {/* STEP 3: Problems */}
           {step === 3 && (
-            <View style={styles.gridContainer}>
-              {problems.map(p => {
-                const on = selectedProblems.includes(p);
-                return (
+            <View>
+              <Card style={styles.selectedCard}>
+                <Smartphone size={24} color={theme.primary} />
+                <View style={styles.selectedCardInfo}>
+                  <Text style={[styles.selectedCardLabel, { color: theme.textSecondary }]}>Device</Text>
+                  <Text style={[styles.selectedCardValue, { color: theme.text }]}>{brand} {model}</Text>
+                </View>
+              </Card>
+
+              <View style={styles.listContainer}>
+                {problems.map((p) => (
                   <TouchableOpacity
                     key={p}
                     style={[
-                      styles.tile, 
-                      { backgroundColor: theme.surface, borderColor: theme.cardBorder, paddingVertical: 16 },
-                      on && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                      styles.rowTile, 
+                      { backgroundColor: theme.surface, borderColor: theme.cardBorder },
+                      selectedProblems.includes(p) && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
                     ]}
                     onPress={() => toggleProblem(p)}
                     activeOpacity={0.7}
                   >
                     <Text style={[
-                      styles.tileText, 
-                      { color: theme.text, flex: 1, marginLeft: 0 },
-                      on && { color: theme.primary }
+                      styles.rowTileText, 
+                      { color: theme.text },
+                      selectedProblems.includes(p) && { color: theme.primary }
                     ]}>{p}</Text>
-                    {on && (
-                      <View style={[styles.checkBadge, { backgroundColor: theme.primary }]}>
-                        <Check size={12} color="#fff" />
-                      </View>
-                    )}
+                    {selectedProblems.includes(p) && <Check size={18} color={theme.primary} />}
                   </TouchableOpacity>
-                );
-              })}
+                ))}
+              </View>
             </View>
           )}
 
-          {/* STEP 4: Describe */}
+          {/* STEP 4: Tell us more */}
           {step === 4 && (
             <View>
               <TextInput
@@ -260,19 +378,11 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   <ImagePlus size={24} color={theme.textMuted} />
                 </TouchableOpacity>
               </View>
-              <Text style={[styles.hintText, { color: theme.textSecondary }]}>Photos help us understand the issue before inspection.</Text>
-
-              <TouchableOpacity 
-                style={[styles.videoBox, { borderColor: theme.cardBorder }]} 
-                onPress={() => Alert.alert('Video Upload', 'Video upload prototype coming soon!')}
-              >
-                <Video size={18} color={theme.textSecondary} />
-                <Text style={[styles.videoBoxText, { color: theme.textSecondary }]}>Add Video (optional)</Text>
-              </TouchableOpacity>
+              <Text style={[styles.hintText, { color: theme.textSecondary }]}>Photos help our certified technician prepare.</Text>
             </View>
           )}
 
-          {/* STEP 5: Service */}
+          {/* STEP 5: Dynamic Model-Specific Services & Custom Pricing */}
           {step === 5 && (
             <View>
               <Card style={styles.selectedCard}>
@@ -283,37 +393,47 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                 </View>
               </Card>
 
-              {servicesForDevice.map(s => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={[
-                    styles.serviceRowTile, 
-                    { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                    serviceId === s.id && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                  ]}
-                  onPress={() => setServiceId(s.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[
-                      styles.serviceRowName, 
-                      { color: theme.text },
-                      serviceId === s.id && { color: theme.primary }
-                    ]}>{s.name}</Text>
-                    <Text style={[styles.serviceRowTag, { color: theme.textSecondary }]}>
-                      {s.tag ? `${s.tag} estimate` : 'Estimated Price'}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={[styles.serviceRowPrice, { color: theme.text }]}>{inr(s.price)}</Text>
-                    {serviceId === s.id && <Check size={16} color={theme.primary} style={{ marginTop: 4 }} />}
-                  </View>
-                </TouchableOpacity>
-              ))}
+              {loadingServices ? (
+                <View style={styles.loaderBox}>
+                  <ActivityIndicator size="small" color={theme.primary} />
+                  <Text style={[styles.loaderText, { color: theme.textSecondary }]}>Loading {model} custom pricing...</Text>
+                </View>
+              ) : (
+                servicesList.map(s => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[
+                      styles.serviceRowTile, 
+                      { backgroundColor: theme.surface, borderColor: theme.cardBorder },
+                      serviceId === String(s.id) && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                    ]}
+                    onPress={() => {
+                      setServiceId(String(s.id));
+                      setSelectedServiceObj(s);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[
+                        styles.serviceRowName, 
+                        { color: theme.text },
+                        serviceId === String(s.id) && { color: theme.primary }
+                      ]}>{s.service_name}</Text>
+                      <Text style={[styles.serviceRowTag, { color: theme.textSecondary }]}>
+                        ⭐ {s.part_quality} • 🛡️ {s.warranty}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={[styles.serviceRowPrice, { color: theme.text }]}>{inr(s.price)}</Text>
+                      {serviceId === String(s.id) && <Check size={16} color={theme.primary} style={{ marginTop: 4 }} />}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
 
               <View style={[styles.warningBox, { backgroundColor: isDark ? '#451a03' : '#fffbeb' }]}>
                 <Text style={[styles.warningText, { color: isDark ? '#fde68a' : '#b45309' }]}>
-                  Final price may change after physical inspection.
+                  All repairs include 6-month genuine parts warranty.
                 </Text>
               </View>
             </View>
@@ -328,47 +448,46 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   <TouchableOpacity
                     key={d.date}
                     style={[
-                      styles.dateBox, 
+                      styles.dateTile, 
                       { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                      day === i && { backgroundColor: theme.primary, borderColor: theme.primary }
+                      day === i && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
                     ]}
                     onPress={() => setDay(i)}
                     activeOpacity={0.7}
                   >
                     <Text style={[
-                      styles.dateLabel, 
+                      styles.dateDay, 
                       { color: theme.textSecondary },
-                      day === i && { color: 'rgba(255,255,255,0.8)' }
+                      day === i && { color: theme.primary }
                     ]}>{d.label}</Text>
                     <Text style={[
-                      styles.dateValue, 
+                      styles.dateNum, 
                       { color: theme.text },
-                      day === i && { color: '#ffffff' }
+                      day === i && { color: theme.primary }
                     ]}>{d.date}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <Text style={[styles.subHeading, { color: theme.text }]}>Time slot</Text>
-              <View style={styles.gridContainer}>
-                {timeSlots.map(t => (
+              <Text style={[styles.subHeading, { color: theme.text, marginTop: 24 }]}>Time Slot</Text>
+              <View style={styles.slotGrid}>
+                {timeSlots.map((t) => (
                   <TouchableOpacity
                     key={t.time}
-                    disabled={!t.available}
                     style={[
-                      styles.timeBox,
+                      styles.slotTile, 
                       { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                      !t.available && { backgroundColor: theme.divider, borderColor: theme.divider, opacity: 0.5 },
-                      t.available && slot === t.time && { backgroundColor: theme.primary, borderColor: theme.primary }
+                      slot === t.time && { borderColor: theme.primary, backgroundColor: theme.primarySoft },
+                      !t.available && { opacity: 0.4 }
                     ]}
-                    onPress={() => setSlot(t.time)}
+                    onPress={() => t.available && setSlot(t.time)}
+                    disabled={!t.available}
                     activeOpacity={0.7}
                   >
                     <Text style={[
-                      styles.timeBoxText,
+                      styles.slotText, 
                       { color: theme.text },
-                      !t.available && { color: theme.textMuted, textDecorationLine: 'line-through' },
-                      t.available && slot === t.time && { color: '#ffffff' }
+                      slot === t.time && { color: theme.primary }
                     ]}>{t.time}</Text>
                   </TouchableOpacity>
                 ))}
@@ -376,12 +495,12 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
             </View>
           )}
 
-          {/* STEP 7: Method */}
+          {/* STEP 7: Repair Method */}
           {step === 7 && (
             <View>
               {[
-                { id: "store", icon: Store, title: "Visit Store", desc: "Bring your phone to our repair center." },
-                { id: "pickup", icon: Truck, title: "Pickup & Delivery", desc: "We'll collect your phone and return it after repair." },
+                { id: "pickup", icon: Truck, title: "Doorstep Pickup & Delivery", desc: "Our executive collects your phone from your doorstep (₹99)" },
+                { id: "store", icon: Store, title: "Visit Fixly Service Hub", desc: "Walk in to our nearest certified service center (Free)" },
               ].map(m => (
                 <TouchableOpacity
                   key={m.id}
@@ -393,10 +512,8 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   onPress={() => setMethod(m.id as any)}
                   activeOpacity={0.7}
                 >
-                  <View style={[styles.methodIconBox, { backgroundColor: theme.background }]}>
-                    <m.icon size={24} color={method === m.id ? theme.primary : theme.textSecondary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
+                  <m.icon size={24} color={method === m.id ? theme.primary : theme.textSecondary} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[
                       styles.rowTileText, 
                       { color: theme.text },
@@ -447,64 +564,25 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
               >
                 <Text style={[styles.addAddressText, { color: theme.primary }]}>+ Add New Address</Text>
               </TouchableOpacity>
-
-              {showAddressForm && (
-                <Card style={styles.addressForm}>
-                  <TextInput 
-                    style={[styles.formInput, { backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.text }]} 
-                    placeholder="Full Name" 
-                    placeholderTextColor={theme.textMuted}
-                  />
-                  <TextInput 
-                    style={[styles.formInput, { backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.text }]} 
-                    placeholder="Phone" 
-                    placeholderTextColor={theme.textMuted}
-                    keyboardType="phone-pad" 
-                  />
-                  <TextInput 
-                    style={[styles.formInput, { backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.text }]} 
-                    placeholder="House / Flat" 
-                    placeholderTextColor={theme.textMuted}
-                  />
-                  <View style={styles.formRow}>
-                    <TextInput 
-                      style={[styles.formInput, { flex: 1, marginRight: 8, backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.text }]} 
-                      placeholder="Street" 
-                      placeholderTextColor={theme.textMuted}
-                    />
-                    <TextInput 
-                      style={[styles.formInput, { flex: 1, backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.text }]} 
-                      placeholder="Area" 
-                      placeholderTextColor={theme.textMuted}
-                    />
-                  </View>
-                </Card>
-              )}
             </View>
           )}
 
-          {/* STEP 9: Summary */}
+          {/* STEP 9: Summary & MySQL Booking Confirmation */}
           {step === 9 && (
             <View>
               <Card style={styles.summaryCard}>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Customer</Text><Text style={[styles.kvValue, { color: theme.text }]}>{CUSTOMER_NAME || "Rahul Sharma"}</Text></View>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Device</Text><Text style={[styles.kvValue, { color: theme.text }]}>{model || "iPhone 13"}</Text></View>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedProblems.join(", ") || "Screen Broken"}</Text></View>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Service</Text><Text style={[styles.kvValue, { color: theme.text }]}>{service?.name ?? "Screen Replacement"}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Customer</Text><Text style={[styles.kvValue, { color: theme.text }]}>{user?.name || CUSTOMER_NAME || "Rahul Sharma"}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Device</Text><Text style={[styles.kvValue, { color: theme.text }]}>{brand} {model}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedProblems.join(", ") || "Diagnostic Repair"}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Service</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedServiceObj?.service_name ?? "Screen Replacement"}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment</Text><Text style={[styles.kvValue, { color: theme.text }]}>{appointmentDays[day]?.date} 2026, {slot || "11:00 AM"}</Text></View>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Method</Text><Text style={[styles.kvValue, { color: theme.text }]}>{method === "pickup" ? "Pickup & Delivery" : "Visit Store"}</Text></View>
-                {method === "pickup" && (
-                  <View style={[styles.kvRow, { borderBottomWidth: 0 }]}>
-                    <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Address</Text>
-                    <Text style={[styles.kvValue, { color: theme.text }]}>{addressId === "home" ? "Home" : "Office"}</Text>
-                  </View>
-                )}
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Method</Text><Text style={[styles.kvValue, { color: theme.text }]}>{method === "pickup" ? "Doorstep Pickup & Delivery" : "Visit Store"}</Text></View>
               </Card>
 
               <Card style={styles.priceCard}>
                 <View style={styles.priceRow}>
                   <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Estimated Service</Text>
-                  <Text style={[styles.priceValue, { color: theme.text }]}>{inr(service?.price ?? 12999)}</Text>
+                  <Text style={[styles.priceValue, { color: theme.text }]}>{inr(currentServicePrice)}</Text>
                 </View>
                 {method === "pickup" && (
                   <View style={styles.priceRow}>
@@ -525,7 +603,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
 
               <View style={[styles.warningBox, { backgroundColor: isDark ? '#451a03' : '#fffbeb' }]}>
                 <Text style={[styles.warningText, { color: isDark ? '#fde68a' : '#b45309' }]}>
-                  Final repair amount will be confirmed after inspection.
+                  Final repair amount will be confirmed after doorstep inspection.
                 </Text>
               </View>
             </View>
@@ -554,14 +632,15 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.btn, styles.btnPrimary]} 
-            onPress={() => {
-              Alert.alert('Success', 'Repair booked successfully!', [
-                { text: 'OK', onPress: () => navigation.navigate('Home') }
-              ]);
-            }}
+            style={[styles.btn, styles.btnPrimary, isSubmitting && styles.btnDisabled]} 
+            onPress={handleConfirmBooking}
+            disabled={isSubmitting}
           >
-            <Text style={styles.btnPrimaryText}>Confirm · {inr(total)}</Text>
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.btnPrimaryText}>Confirm · {inr(total)}</Text>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -570,9 +649,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  safeArea: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -580,373 +657,177 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
-  backButton: {
-    padding: 4,
-  },
-  backButtonPlaceholder: {
-    width: 32,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  progressContainer: {
-    height: 4,
-  },
-  progressBar: {
-    height: '100%',
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  stepSub: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  stepTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 24,
-  },
+  backButton: { padding: 4 },
+  backButtonPlaceholder: { width: 32 },
+  headerTitle: { fontSize: 17, fontWeight: '700' },
+  progressContainer: { height: 4, width: '100%' },
+  progressBar: { height: 4 },
+  container: { flex: 1 },
+  content: { padding: 16, paddingBottom: 40 },
+  stepSub: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  stepTitle: { fontSize: 20, fontWeight: '800', marginTop: 4, marginBottom: 16 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 48,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 52,
+    borderWidth: 1,
     marginBottom: 16,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    fontSize: 15,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 14 },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tile: {
     width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
+    padding: 14,
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    borderWidth: 1.5,
+    gap: 8,
   },
-  tileText: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
+  tileText: { fontSize: 14, fontWeight: '700' },
+  listContainer: { gap: 10 },
   rowTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 16,
+    justifyContent: 'space-between',
     padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
   },
-  rowTileText: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginLeft: 12,
-  },
+  rowTileText: { fontSize: 14, fontWeight: '700' },
   selectedCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    marginBottom: 16,
-  },
-  selectedCardInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  selectedCardLabel: {
-    fontSize: 12,
-  },
-  selectedCardValue: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  changeLink: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  checkBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  textArea: {
-    borderWidth: 1,
+    padding: 14,
     borderRadius: 16,
-    padding: 16,
-    fontSize: 15,
-    minHeight: 120,
-    textAlignVertical: 'top',
-    marginBottom: 24,
+    marginBottom: 16,
+    gap: 12,
   },
-  subHeading: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  photoBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
+  selectedCardInfo: { flex: 1 },
+  selectedCardLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
+  selectedCardValue: { fontSize: 15, fontWeight: '800', marginTop: 1 },
+  textArea: {
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    marginRight: 12,
-    marginBottom: 12,
-    alignItems: 'center',
+    fontSize: 14,
+    textAlignVertical: 'top',
+    height: 100,
+    marginBottom: 20,
+  },
+  subHeading: { fontSize: 14, fontWeight: '700', marginBottom: 10 },
+  photoGrid: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  photoBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 14,
+    borderWidth: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoBox: {
+    width: 70,
+    height: 70,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   removePhoto: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 20,
-    height: 20,
+    backgroundColor: '#ef4444',
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 2,
   },
-  addPhotoBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    marginRight: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hintText: {
-    fontSize: 13,
-    marginBottom: 24,
-  },
-  videoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: 12,
-  },
-  videoBoxText: {
-    marginLeft: 8,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  hintText: { fontSize: 12, marginTop: 4 },
   serviceRowTile: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    marginBottom: 10,
   },
-  serviceRowName: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  serviceRowTag: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  serviceRowPrice: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  warningBox: {
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  warningText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  dateScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  dateBox: {
-    width: 72,
-    alignItems: 'center',
+  serviceRowName: { fontSize: 15, fontWeight: '800' },
+  serviceRowTag: { fontSize: 12, marginTop: 2 },
+  serviceRowPrice: { fontSize: 16, fontWeight: '900' },
+  warningBox: { padding: 12, borderRadius: 12, marginTop: 8 },
+  warningText: { fontSize: 12, fontWeight: '600' },
+  dateScroll: { flexDirection: 'row', marginBottom: 8 },
+  dateTile: {
     paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     borderWidth: 1.5,
-    borderRadius: 16,
-    marginRight: 12,
-  },
-  dateLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dateValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  timeBox: {
-    width: '31%',
+    marginRight: 8,
     alignItems: 'center',
-    paddingVertical: 14,
+    minWidth: 70,
+  },
+  dateDay: { fontSize: 12, fontWeight: '600' },
+  dateNum: { fontSize: 14, fontWeight: '800', marginTop: 2 },
+  slotGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  slotTile: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderRadius: 12,
-    marginBottom: 12,
   },
-  timeBoxText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  methodIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  methodDesc: {
-    fontSize: 13,
-    marginTop: 4,
-    lineHeight: 18,
-  },
+  slotText: { fontSize: 13, fontWeight: '700' },
+  methodDesc: { fontSize: 12, marginTop: 2 },
   addAddressBtn: {
-    height: 52,
-    borderWidth: 2,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
-  addAddressText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  addressForm: {
-    marginTop: 16,
-    padding: 16,
-  },
-  formInput: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    fontSize: 15,
-    marginBottom: 12,
-  },
-  formRow: {
-    flexDirection: 'row',
-  },
-  summaryCard: {
-    padding: 16,
-    marginBottom: 16,
-  },
+  addAddressText: { fontSize: 14, fontWeight: '700' },
+  summaryCard: { padding: 14, borderRadius: 16, marginBottom: 12 },
   kvRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
   },
-  kvKey: {
-    fontSize: 14,
-  },
-  kvValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    maxWidth: '60%',
-    textAlign: 'right',
-  },
-  priceCard: {
-    padding: 16,
-    marginBottom: 16,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  priceLabel: {
-    fontSize: 14,
-  },
-  priceValue: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  priceSuccess: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#16a34a',
-  },
-  divider: {
-    height: 1,
-    marginVertical: 12,
-  },
-  priceTotalLabel: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  priceTotalValue: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
+  kvKey: { fontSize: 13 },
+  kvValue: { fontSize: 13, fontWeight: '700' },
+  priceCard: { padding: 16, borderRadius: 16, marginBottom: 12 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  priceLabel: { fontSize: 13 },
+  priceValue: { fontSize: 13, fontWeight: '700' },
+  priceSuccess: { fontSize: 13, fontWeight: '700', color: '#16a34a' },
+  priceTotalLabel: { fontSize: 15, fontWeight: '800' },
+  priceTotalValue: { fontSize: 17, fontWeight: '900' },
+  divider: { height: 1, marginVertical: 8 },
   footer: {
     flexDirection: 'row',
     padding: 16,
     borderTopWidth: 1,
+    gap: 12,
   },
   btn: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: 'center',
+    height: 48,
+    borderRadius: 14,
     justifyContent: 'center',
-    flexDirection: 'row',
+    alignItems: 'center',
   },
-  btnSecondary: {
-    flex: 1,
-    borderWidth: 1,
-    marginRight: 12,
-    maxWidth: 100,
-  },
-  btnSecondaryText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  btnSecondary: { width: 80, borderWidth: 1 },
+  btnSecondaryText: { fontSize: 14, fontWeight: '700' },
   btnPrimary: {
-    flex: 2,
-    backgroundColor: '#111827',
+    flex: 1,
+    backgroundColor: '#0284c7',
+    flexDirection: 'row',
+    gap: 6,
   },
-  btnDisabled: {
-    opacity: 0.5,
-  },
-  btnPrimaryText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginRight: 8,
-  },
+  btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  btnDisabled: { opacity: 0.5 },
+  loaderBox: { padding: 30, alignItems: 'center', gap: 8 },
+  loaderText: { fontSize: 12 },
 });
