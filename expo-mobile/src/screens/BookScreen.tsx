@@ -430,12 +430,6 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                   </TouchableOpacity>
                 ))
               )}
-
-              <View style={[styles.warningBox, { backgroundColor: isDark ? '#451a03' : '#fffbeb' }]}>
-                <Text style={[styles.warningText, { color: isDark ? '#fde68a' : '#b45309' }]}>
-                  All repairs include 6-month genuine parts warranty.
-                </Text>
-              </View>
             </View>
           )}
 
