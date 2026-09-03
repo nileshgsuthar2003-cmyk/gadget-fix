@@ -123,6 +123,12 @@ export const api = {
     );
   },
 
+  async deleteRepair(id: string) {
+    return apiRequest<{ success: boolean; message: string }>(`/admin/repairs/${id}`, {
+      method: "DELETE",
+    });
+  },
+
   // Dynamic Services Master
   async getServices() {
     return apiRequest<{ success: boolean; services: any[] }>("/services");
@@ -232,5 +238,39 @@ export const api = {
   // Dynamic Customers
   async getAdminCustomers() {
     return apiRequest<{ success: boolean; customers: any[] }>("/admin/customers");
+  },
+
+  // Upload Photo & Media to Backend (stores in public/uploads)
+  async uploadImage(fileOrBase64: File | string) {
+    if (typeof fileOrBase64 === "string") {
+      return apiRequest<{ success: boolean; url: string; full_url: string; filename: string }>("/upload", {
+        method: "POST",
+        body: JSON.stringify({ base64: fileOrBase64 }),
+      });
+    }
+    const formData = new FormData();
+    formData.append("file", fileOrBase64);
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("fixly_admin_token") : null;
+    const res = await fetch(`${API_BASE_URL}/upload`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return await res.json();
+  },
+
+  // Create Repair Booking (MySQL)
+  async createRepair(data: any) {
+    return apiRequest<{ success: boolean; message: string; repair: any }>("/repairs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Customer Repairs
+  async getMyRepairs() {
+    return apiRequest<{ success: boolean; repairs: any[] }>("/repairs");
   },
 };

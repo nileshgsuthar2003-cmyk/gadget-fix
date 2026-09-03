@@ -6,12 +6,16 @@ use App\Http\Controllers\Api\RepairController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UploadController;
 
 /*
 |--------------------------------------------------------------------------
 | Fixly API Routes
 |--------------------------------------------------------------------------
 */
+
+// Public File & Photo Upload Endpoint (Stores in public/uploads)
+Route::post('/upload', [UploadController::class, 'upload']);
 
 // Public Auth Endpoints
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -26,16 +30,9 @@ Route::post('/auth/forgot-password/send-otp', [AuthController::class, 'sendReset
 Route::post('/auth/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);
 Route::post('/auth/forgot-password/reset', [AuthController::class, 'resetPassword']);
 
-// Admin Dynamic Users Management
-Route::get('/admin/users', [UserController::class, 'index']);
-Route::post('/admin/users', [UserController::class, 'store']);
-Route::put('/admin/users/{id}', [UserController::class, 'update']);
-Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
-
-// Services Endpoints (Master General Services)
+// Public Services
 Route::get('/services', [ServiceController::class, 'index']);
 Route::post('/services', [ServiceController::class, 'store']);
-Route::put('/services/{id}', [ServiceController::class, 'update']);
 Route::delete('/services/{id}', [ServiceController::class, 'destroy']);
 
 // ==========================================
@@ -59,15 +56,20 @@ Route::delete('/catalog/model-services/{id}', [CatalogController::class, 'delete
 // Admin Dynamic Endpoints
 Route::get('/admin/repairs', [RepairController::class, 'adminAllRepairs']);
 Route::put('/admin/repairs/{id}/status', [RepairController::class, 'updateStatus']);
+Route::delete('/admin/repairs/{id}', [RepairController::class, 'destroy']);
 Route::get('/admin/customers', [RepairController::class, 'adminCustomers']);
+Route::get('/admin/users', [UserController::class, 'index']);
+Route::post('/admin/users', [UserController::class, 'store']);
+Route::put('/admin/users/{id}', [UserController::class, 'update']);
+Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
 
-// Public Repairs Endpoints
+// Public & Customer Repairs Endpoints
+Route::get('/repairs', [RepairController::class, 'index']);
+Route::post('/repairs', [RepairController::class, 'store']);
 Route::get('/repairs/{id}', [RepairController::class, 'show']);
+Route::delete('/repairs/{id}', [RepairController::class, 'destroy']);
 
 // Protected Endpoints
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    Route::get('/repairs', [RepairController::class, 'index']);
-    Route::post('/repairs', [RepairController::class, 'store']);
 });

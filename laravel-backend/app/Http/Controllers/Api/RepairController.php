@@ -11,16 +11,43 @@ class RepairController extends Controller
 {
     public function index(Request $request)
     {
-        $user = $request->user();
-        $repairs = Repair::where('user_id', $user ? $user->id : 1)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $userId = $request->user_id ?? ($request->user() ? $request->user()->id : null);
+        $query = Repair::with('user')->orderBy('created_at', 'desc');
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        $repairs = $query->get()->map(function ($r) {
+            return [
+                'id'               => $r->id,
+                'user_id'          => $r->user_id,
+                'customer'         => $r->customer_name ?? ($r->user ? $r->user->name : 'Customer'),
+                'customer_name'    => $r->customer_name ?? ($r->user ? $r->user->name : 'Customer'),
+                'customer_phone'   => $r->customer_phone ?? ($r->user ? $r->user->phone : ''),
+                'device'           => $r->device,
+                'service'          => $r->service,
+                'problem'          => $r->problem,
+                'description'      => $r->description,
+                'photos'           => $r->photos ?? [],
+                'status'           => $r->status,
+                'estimate'         => (float)$r->estimate,
+                'cost'             => (float)$r->estimate,
+                'appointment'      => $r->appointment_date ? (is_string($r->appointment_date) ? substr($r->appointment_date, 0, 10) : $r->appointment_date->format('Y-m-d')) : date('Y-m-d'),
+                'appointment_date' => $r->appointment_date,
+                'time_slot'        => $r->time_slot,
+                'method'           => $r->method,
+                'address'          => $r->address,
+                'payment_status'   => $r->payment_status,
+                'created_at'       => $r->created_at ? $r->created_at->toIso8601String() : now()->toIso8601String(),
+            ];
+        });
 
         return response()->json([
             'success' => true,
+            'repairs' => $repairs,
             'data'    => $repairs,
-        ]);
+        ], 200);
     }
 
     public function adminAllRepairs()
@@ -84,6 +111,7 @@ class RepairController extends Controller
         return response()->json([
             'success' => true,
             'data'    => $repair,
+            'repair'  => $repair,
         ]);
     }
 
@@ -111,25 +139,77 @@ class RepairController extends Controller
     public function store(Request $request)
     {
         $user = $request->user();
+        $userId = $request->user_id ?? ($user ? $user->id : 1);
+        
         $repairId = 'REP-' . date('Y') . '-' . strtoupper(substr(uniqid(), -5));
+
+        $problem = is_array($request->problem) ? implode(', ', $request->problem) : ($request->problem ?? 'General Diagnosis');
+        $photos = is_array($request->photos) ? $request->photos : ($request->photos ? [$request->photos] : []);
+
+        $appointmentDate = null;
+        $rawDate = $request->appointment_date ?? $request->appointmentDate;
+        if (!empty($rawDate)) {
+            try {
+                $appointmentDate = \Carbon\Carbon::parse($rawDate)->toDateTimeString();
+            } catch (\Throwable $e) {
+                $appointmentDate = now()->addDay()->toDateTimeString();
+            }
+        } else {
+            $appointmentDate = now()->addDay()->toDateTimeString();
+        }
 
         $repair = Repair::create([
             'id'               => $repairId,
-            'user_id'          => $user ? $user->id : 1,
-            'device'           => $request->device,
-            'service'          => $request->service,
-            'problem'          => $request->problem,
-            'status'           => 'Pending',
-            'estimate'         => $request->estimate ?? 999.00,
-            'appointment_date' => $request->appointmentDate ?? now()->addDay(),
+            'user_id'          => $userId,
+            'customer_name'    => $request->customer_name ?? ($user ? $user->name : 'Rahul Sharma'),
+            'customer_phone'   => $request->customer_phone ?? ($user ? $user->phone : '9876543210'),
+            'device'           => $request->device ?? 'Smartphone',
+            'service'          => $request->service ?? 'Diagnosis & Repair',
+            'problem'          => $problem,
+            'description'      => $request->description,
+            'photos'           => $photos,
+            'status'           => 'Booking Created',
+            'estimate'         => (float)($request->estimate ?? $request->cost ?? 999.00),
+            'appointment_date' => $appointmentDate,
+            'time_slot'        => $request->time_slot ?? $request->slot ?? '11:00 AM',
             'method'           => $request->method ?? 'Pickup & Delivery',
+            'address'          => $request->address ?? 'Home Address',
             'payment_status'   => 'Pending',
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Repair booking created successfully.',
+            'repair'  => $repair,
             'data'    => $repair,
         ], 201);
     }
+
+    public function destroy($id)
+    {
+        $repair = Repair::find($id);
+
+        if (!$repair) {
+            return response()->json(['success' => false, 'error' => 'Repair booking not found'], 404);
+        }
+
+        // Delete associated uploaded images from public/uploads if any
+        if (!empty($repair->photos) && is_array($repair->photos)) {
+            foreach ($repair->photos as $photoUrl) {
+                $filename = basename($photoUrl);
+                $filePath = public_path('uploads/' . $filename);
+                if (\Illuminate\Support\Facades\File::exists($filePath)) {
+                    \Illuminate\Support\Facades\File::delete($filePath);
+                }
+            }
+        }
+
+        $repair->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Repair booking #{$id} deleted successfully.",
+        ], 200);
+    }
 }
+

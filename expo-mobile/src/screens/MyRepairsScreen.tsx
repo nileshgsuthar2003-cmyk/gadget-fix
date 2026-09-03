@@ -1,22 +1,58 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  ActivityIndicator, RefreshControl 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Smartphone } from 'lucide-react-native';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
-import { repairs, CUSTOMER_NAME, inr } from '../lib/data';
-import { useNavigation } from '@react-navigation/native';
+import { repairs as fallbackRepairs, CUSTOMER_NAME, inr } from '../lib/data';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { api, ApiRepair } from '../lib/api';
 
 export default function MyRepairsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme, isDark } = useTheme();
 
-  const myRepairs = repairs.filter(r => r.customer === CUSTOMER_NAME || r.customer === "Rahul Sharma");
-  const activeRepairs = myRepairs.filter(r => r.status !== "Completed" && r.status !== "Cancelled");
-  const pastRepairs = myRepairs.filter(r => r.status === "Completed" || r.status === "Cancelled");
+  const [liveRepairs, setLiveRepairs] = useState<ApiRepair[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchRepairs = useCallback(async () => {
+    try {
+      const res = await api.getMyRepairs();
+      if (res && res.success && Array.isArray(res.repairs) && res.repairs.length > 0) {
+        setLiveRepairs(res.repairs);
+      } else {
+        setLiveRepairs(fallbackRepairs as any);
+      }
+    } catch (e) {
+      setLiveRepairs(fallbackRepairs as any);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Auto-refresh data every time My Repairs tab is focused / opened
+  useFocusEffect(
+    useCallback(() => {
+      fetchRepairs();
+    }, [fetchRepairs])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchRepairs();
+  }, [fetchRepairs]);
+
+  const allRepairs = liveRepairs.length > 0 ? liveRepairs : (fallbackRepairs as any);
+  const activeRepairs = allRepairs.filter((r: any) => r.status !== "Completed" && r.status !== "Cancelled");
+  const pastRepairs = allRepairs.filter((r: any) => r.status === "Completed" || r.status === "Cancelled");
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
@@ -24,70 +60,89 @@ export default function MyRepairsScreen() {
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Repairs</Text>
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        
-        {/* Active Repairs */}
-        {activeRepairs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Repairs</Text>
-            {activeRepairs.map((r) => (
-              <TouchableOpacity 
-                key={r.id} 
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('RepairDetails', { repairId: r.id })}
-              >
-                <Card style={styles.repairCard}>
-                  <View style={[styles.iconContainerActive, { backgroundColor: theme.primarySoft }]}>
-                    <Smartphone size={22} color={theme.primary} />
-                  </View>
-                  <View style={styles.repairInfo}>
-                    <Text style={[styles.repairDevice, { color: theme.text }]} numberOfLines={1}>{r.device}</Text>
-                    <Text style={[styles.repairService, { color: theme.textSecondary }]}>{r.service}</Text>
-                  </View>
-                  <View style={styles.statusCol}>
-                    <StatusBadge status={r.status} />
-                    <Text style={[styles.dateText, { color: theme.textMuted }]}>{r.appointment}</Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            ))}
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
+      >
+        {loading ? (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loaderText, { color: theme.textSecondary }]}>Loading your repairs...</Text>
           </View>
-        )}
+        ) : (
+          <>
+            {/* Active Repairs */}
+            {activeRepairs.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Active Repairs</Text>
+                {activeRepairs.map((r: any) => (
+                  <TouchableOpacity 
+                    key={r.id} 
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('RepairDetails', { repairId: r.id })}
+                  >
+                    <Card style={styles.repairCard}>
+                      <View style={[styles.iconContainerActive, { backgroundColor: theme.primarySoft }]}>
+                        <Smartphone size={22} color={theme.primary} />
+                      </View>
+                      <View style={styles.repairInfo}>
+                        <Text style={[styles.repairDevice, { color: theme.text }]} numberOfLines={1}>{r.device}</Text>
+                        <Text style={[styles.repairService, { color: theme.textSecondary }]}>{r.service}</Text>
+                      </View>
+                      <View style={styles.statusCol}>
+                        <StatusBadge status={r.status} />
+                        <Text style={[styles.dateText, { color: theme.textMuted }]}>{r.appointment || r.created_at?.slice(0, 10)}</Text>
+                      </View>
+                    </Card>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-        {/* Past Repairs */}
-        {pastRepairs.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Past Repairs</Text>
-            {pastRepairs.map((r) => (
-              <TouchableOpacity 
-                key={r.id} 
-                activeOpacity={0.7}
-                onPress={() => navigation.navigate('RepairDetails', { repairId: r.id })}
-              >
-                <Card style={styles.repairCard}>
-                  <View style={[styles.iconContainerPast, { backgroundColor: theme.background }]}>
-                    <Smartphone size={22} color={theme.textMuted} />
-                  </View>
-                  <View style={styles.repairInfo}>
-                    <Text style={[styles.repairDevice, { color: theme.text }]} numberOfLines={1}>{r.device}</Text>
-                    <Text style={[styles.repairService, { color: theme.textSecondary }]}>{r.service}</Text>
-                  </View>
-                  <View style={styles.statusCol}>
-                    <StatusBadge status={r.status} />
-                    <Text style={[styles.estimateText, { color: theme.text }]}>{inr(r.estimate)}</Text>
-                  </View>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+            {/* Past Repairs */}
+            {pastRepairs.length > 0 && (
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Past Repairs</Text>
+                {pastRepairs.map((r: any) => (
+                  <TouchableOpacity 
+                    key={r.id} 
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('RepairDetails', { repairId: r.id })}
+                  >
+                    <Card style={styles.repairCard}>
+                      <View style={[styles.iconContainerPast, { backgroundColor: theme.background }]}>
+                        <Smartphone size={22} color={theme.textMuted} />
+                      </View>
+                      <View style={styles.repairInfo}>
+                        <Text style={[styles.repairDevice, { color: theme.text }]} numberOfLines={1}>{r.device}</Text>
+                        <Text style={[styles.repairService, { color: theme.textSecondary }]}>{r.service}</Text>
+                      </View>
+                      <View style={styles.statusCol}>
+                        <StatusBadge status={r.status} />
+                        <Text style={[styles.estimateText, { color: theme.text }]}>{inr(r.estimate || r.cost || 0)}</Text>
+                      </View>
+                    </Card>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-        {activeRepairs.length === 0 && pastRepairs.length === 0 && (
-          <View style={styles.emptyState}>
-            <Smartphone size={48} color={theme.textMuted} />
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No Repairs Found</Text>
-            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>You haven't booked any phone repairs yet.</Text>
-          </View>
+            {activeRepairs.length === 0 && pastRepairs.length === 0 && (
+              <View style={styles.emptyState}>
+                <Smartphone size={48} color={theme.textMuted} />
+                <Text style={[styles.emptyTitle, { color: theme.text }]}>No Repairs Found</Text>
+                <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>You haven't booked any phone repairs yet.</Text>
+              </View>
+            )}
+          </>
         )}
 
       </ScrollView>
@@ -184,5 +239,13 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  loaderContainer: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    gap: 12,
+  },
+  loaderText: {
+    fontSize: 13,
   },
 });

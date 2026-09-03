@@ -1,14 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   ChevronLeft, CheckCircle2, Circle, FileText 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
-import { repairs, statusFlow, trackingSteps, inr } from '../lib/data';
+import { repairs as fallbackRepairs, statusFlow, trackingSteps, inr } from '../lib/data';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { api, ApiRepair, API_BASE_URL } from '../lib/api';
 
 function getTrackingCurrentStep(status: string): number {
   const statusIndex = statusFlow.indexOf(status as any);
@@ -26,7 +28,41 @@ function getTrackingCurrentStep(status: string): number {
 export default function RepairScreen({ route, navigation }: RootStackScreenProps<'RepairDetails'>) {
   const { theme, isDark } = useTheme();
   const { repairId } = route.params || {};
-  const repair = repairs.find((r) => r.id === repairId) || repairs[0];
+
+  const [liveRepair, setLiveRepair] = useState<any>(
+    fallbackRepairs.find((r) => r.id === repairId) || fallbackRepairs[0]
+  );
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchLiveRepair = useCallback(async () => {
+    try {
+      const res = await api.getMyRepairs();
+      if (res && res.success && Array.isArray(res.repairs)) {
+        const found = res.repairs.find((r: any) => String(r.id) === String(repairId));
+        if (found) {
+          setLiveRepair(found);
+        }
+      }
+    } catch (e) {
+      console.warn('Could not refresh repair details');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [repairId]);
+
+  // Auto-refresh when opening / focusing Track Repair screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchLiveRepair();
+    }, [fetchLiveRepair])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchLiveRepair();
+  }, [fetchLiveRepair]);
+
+  const repair = liveRepair || fallbackRepairs[0];
 
   if (!repair) {
     return (
@@ -45,7 +81,7 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
   }
 
   const currentStep = getTrackingCurrentStep(repair.status);
-  const isPickup = repair.method === "Pickup & Delivery";
+  const isPickup = repair.method === "Pickup & Delivery" || repair.method === "pickup";
   const pickupFee = isPickup ? 99 : 0;
 
   return (
@@ -59,7 +95,18 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
+      >
         
         {/* Summary Card */}
         <Card style={styles.summaryCard}>
@@ -119,6 +166,21 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.problem}</Text>
             </View>
+
+            {liveRepair.description ? (
+              <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
+                <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Note</Text>
+                <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.description}</Text>
+              </View>
+            ) : null}
+
+            {liveRepair.address ? (
+              <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
+                <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Address</Text>
+                <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.address}</Text>
+              </View>
+            ) : null}
+
             <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.appointment}, {repair.time}</Text>
@@ -127,6 +189,26 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Repair Method</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.method}</Text>
             </View>
+
+            {/* Attached Photos */}
+            {liveRepair.photos && Array.isArray(liveRepair.photos) && liveRepair.photos.length > 0 && (
+              <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.divider }}>
+                <Text style={[styles.kvKey, { color: theme.textSecondary, marginBottom: 8 }]}>Attached Device Photos ({liveRepair.photos.length})</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                  {liveRepair.photos.map((photoUrl: string, idx: number) => {
+                    const imgUri = photoUrl.startsWith('http') || photoUrl.startsWith('file:') || photoUrl.startsWith('content:')
+                      ? photoUrl
+                      : `${API_BASE_URL.replace('/api', '')}${photoUrl}`;
+                    return (
+                      <View key={idx} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: theme.cardBorder }}>
+                        <Image source={{ uri: imgUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
             <View style={[styles.kvRow, { borderBottomWidth: 0 }]}>
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Payment Status</Text>
               <Text style={[styles.kvValue, { color: repair.payment === 'Paid' ? '#16a34a' : '#d97706' }]}>

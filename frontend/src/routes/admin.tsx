@@ -104,13 +104,22 @@ interface DynamicService {
 interface DynamicRepair {
   id: string;
   user_id?: number;
+  customer?: string;
+  customer_name?: string;
+  customer_phone?: string;
   device: string;
   service: string;
   problem: string;
+  description?: string;
+  photos?: string[];
   status: string;
   estimate: number;
+  cost?: number;
+  appointment?: string;
   appointment_date?: string;
+  time_slot?: string;
   method?: string;
+  address?: string;
   payment_status?: string;
   user?: {
     first_name?: string;
@@ -804,6 +813,26 @@ function AdminPage() {
       }
     } catch (err) {
       toast.info(`Updated status locally.`);
+    }
+  };
+
+  // Delete Repair Booking Permanently
+  const handleDeleteRepair = async (repairId: string, deviceName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete repair booking #${repairId} (${deviceName})?`)) {
+      return;
+    }
+
+    try {
+      const res = await api.deleteRepair(repairId);
+      if (res && res.success) {
+        setRepairList((prev) => prev.filter((r) => r.id !== repairId));
+        toast.success(`Booking #${repairId} deleted from database!`);
+        loadDashboardData();
+      } else {
+        toast.error("Failed to delete repair booking.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Error deleting repair booking.");
     }
   };
 
@@ -1711,20 +1740,29 @@ function AdminPage() {
                                 <StatusBadge status={r.status as any} />
                               </td>
                               <td className="py-3.5 text-right">
-                                <select
-                                  value={r.status}
-                                  onChange={(e) => handleStatusChange(r.id, e.target.value)}
-                                  className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                >
-                                  <option value="Pending">Pending</option>
-                                  <option value="Confirmed">Confirmed</option>
-                                  <option value="Inspection">Inspection</option>
-                                  <option value="Repairing">Repairing</option>
-                                  <option value="Quality Check">Quality Check</option>
-                                  <option value="Ready">Ready</option>
-                                  <option value="Completed">Completed</option>
-                                  <option value="Cancelled">Cancelled</option>
-                                </select>
+                                <div className="inline-flex items-center gap-1.5 justify-end">
+                                  <select
+                                    value={r.status}
+                                    onChange={(e) => handleStatusChange(r.id, e.target.value)}
+                                    className="h-8 rounded-lg border border-border bg-background px-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                  >
+                                    <option value="Pending">Pending</option>
+                                    <option value="Confirmed">Confirmed</option>
+                                    <option value="Inspection">Inspection</option>
+                                    <option value="Repairing">Repairing</option>
+                                    <option value="Quality Check">Quality Check</option>
+                                    <option value="Ready">Ready</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                  </select>
+                                  <button
+                                    onClick={() => handleDeleteRepair(r.id, r.device)}
+                                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    title="Delete booking permanently"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1797,38 +1835,100 @@ function AdminPage() {
                           </div>
                           <div className="flex justify-between text-muted-foreground">
                             <span>Contact:</span>
-                            <span className="font-semibold text-foreground">{r.user?.phone || r.user?.email || "—"}</span>
+                            <span className="font-semibold text-foreground">{r.customer_phone || r.user?.phone || r.user?.email || "—"}</span>
                           </div>
                           <div className="flex justify-between text-muted-foreground">
                             <span>Issue:</span>
                             <span className="font-semibold text-foreground truncate max-w-[180px]">{r.problem}</span>
                           </div>
+                          {r.description && (
+                            <div className="text-muted-foreground pt-0.5">
+                              <span className="font-bold text-foreground">Note:</span> {r.description}
+                            </div>
+                          )}
+                          {r.address && (
+                            <div className="text-muted-foreground pt-0.5">
+                              <span className="font-bold text-foreground">Address:</span> {r.address}
+                            </div>
+                          )}
                           <div className="flex justify-between text-muted-foreground">
                             <span>Method:</span>
                             <span className="font-semibold text-foreground">{r.method || "Pickup & Delivery"}</span>
                           </div>
+
+                          {/* Uploaded Photos Preview */}
+                          {r.photos && r.photos.length > 0 && (
+                            <div className="pt-2">
+                              <p className="text-[11px] font-bold text-foreground mb-1.5 flex items-center gap-1">
+                                <Camera className="h-3 w-3 text-primary" /> Attached Device Photos ({r.photos.length}):
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {r.photos.map((photoUrl, idx) => {
+                                  if (!photoUrl || photoUrl.startsWith('file:') || photoUrl.startsWith('content:')) {
+                                    return (
+                                      <div key={idx} className="h-14 w-14 rounded-lg bg-muted flex flex-col items-center justify-center p-1 border border-border text-[9px] text-muted-foreground text-center">
+                                        <Camera className="h-4 w-4 mb-0.5 text-muted-foreground" />
+                                        <span>Local Only</span>
+                                      </div>
+                                    );
+                                  }
+                                  const cleanPath = photoUrl.startsWith('/') ? photoUrl : `/${photoUrl}`;
+                                  const imgLink = photoUrl.startsWith('http') ? photoUrl : `http://127.0.0.1:8000${cleanPath}`;
+
+                                  return (
+                                    <a
+                                      key={idx}
+                                      href={imgLink}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="relative block h-14 w-14 rounded-lg overflow-hidden border border-border hover:border-primary transition-all group shadow-xs"
+                                      title="Click to view full photo"
+                                    >
+                                      <img
+                                        src={imgLink}
+                                        alt="Device damage"
+                                        className="h-full w-full object-cover group-hover:scale-105 transition-transform"
+                                      />
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
                           <div className="flex justify-between pt-1 border-t border-border/60 font-bold text-foreground">
                             <span>Estimate:</span>
                             <span className="text-primary">{inr(r.estimate)}</span>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-1">
-                          <span className="text-xs text-muted-foreground font-semibold">Change Status:</span>
-                          <select
-                            value={r.status}
-                            onChange={(e) => handleStatusChange(r.id, e.target.value)}
-                            className="h-9 rounded-xl border border-border bg-card px-2.5 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground font-semibold">Change Status:</span>
+                            <select
+                              value={r.status}
+                              onChange={(e) => handleStatusChange(r.id, e.target.value)}
+                              className="h-9 rounded-xl border border-border bg-card px-2.5 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
+                            >
+                              <option value="Pending">Pending</option>
+                              <option value="Confirmed">Confirmed</option>
+                              <option value="Inspection">Inspection</option>
+                              <option value="Repairing">Repairing</option>
+                              <option value="Quality Check">Quality Check</option>
+                              <option value="Ready">Ready</option>
+                              <option value="Completed">Completed</option>
+                              <option value="Cancelled">Cancelled</option>
+                            </select>
+                          </div>
+
+                          <button
+                            onClick={() => handleDeleteRepair(r.id, r.device)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive hover:text-white transition-all shadow-xs shrink-0"
+                            title="Delete repair booking permanently"
                           >
-                            <option value="Pending">Pending</option>
-                            <option value="Confirmed">Confirmed</option>
-                            <option value="Inspection">Inspection</option>
-                            <option value="Repairing">Repairing</option>
-                            <option value="Quality Check">Quality Check</option>
-                            <option value="Ready">Ready</option>
-                            <option value="Completed">Completed</option>
-                            <option value="Cancelled">Cancelled</option>
-                          </select>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Delete</span>
+                          </button>
                         </div>
                       </Card>
                     );

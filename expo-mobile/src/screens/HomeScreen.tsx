@@ -4,13 +4,14 @@ import {
   ActivityIndicator, RefreshControl 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
   Smartphone, Battery, Plug, Camera, Speaker, Droplets, Bell, Search,
   ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu 
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { popularServices as fallbackServices, repairs, CUSTOMER_NAME, inr } from '../lib/data';
-import { api } from '../lib/api';
+import { popularServices as fallbackServices, repairs as fallbackRepairs, CUSTOMER_NAME, inr } from '../lib/data';
+import { api, ApiRepair } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,33 +22,48 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
   const greetingName = user?.first_name || CUSTOMER_NAME.split(' ')[0];
 
   const [liveServices, setLiveServices] = useState<any[]>([]);
+  const [liveRepairs, setLiveRepairs] = useState<ApiRepair[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchServices = async () => {
+  const fetchHomeData = async () => {
     try {
-      const res = await api.getServices();
-      if (res && res.services && res.services.length > 0) {
-        setLiveServices(res.services);
+      const [servicesRes, repairsRes] = await Promise.allSettled([
+        api.getServices(),
+        api.getMyRepairs(),
+      ]);
+
+      if (servicesRes.status === 'fulfilled' && servicesRes.value?.services?.length > 0) {
+        setLiveServices(servicesRes.value.services);
       } else {
         setLiveServices(fallbackServices as any);
       }
+
+      if (repairsRes.status === 'fulfilled' && Array.isArray(repairsRes.value?.repairs) && repairsRes.value.repairs.length > 0) {
+        setLiveRepairs(repairsRes.value.repairs);
+      } else {
+        setLiveRepairs(fallbackRepairs as any);
+      }
     } catch (err) {
       setLiveServices(fallbackServices as any);
+      setLiveRepairs(fallbackRepairs as any);
     } finally {
       setLoadingServices(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchServices();
-  }, []);
+  // Auto-refresh every time the Home tab is focused / opened
+  useFocusEffect(
+    useCallback(() => {
+      fetchHomeData();
+    }, [])
+  );
 
   // Pull down to refresh handler
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchServices();
-    setRefreshing(false);
+    await fetchHomeData();
   }, []);
 
   const getIcon = (iconName: string) => {
@@ -63,7 +79,9 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
     }
   };
 
-  const currentRepair = repairs.find(r => r.status !== 'Completed' && r.status !== 'Cancelled');
+  const currentRepair = (liveRepairs.length > 0 ? liveRepairs : fallbackRepairs).find(
+    r => r.status !== 'Completed' && r.status !== 'Cancelled'
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>

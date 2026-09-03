@@ -70,48 +70,62 @@ export interface ApiRepair {
   created_at?: string;
 }
 
-const CANDIDATE_BASE_URLS = [
-  API_BASE_URL,
-  `http://${DEV_LAN_IP}:8000/api`,
-  'http://127.0.0.1:8000/api',
-  'http://localhost:8000/api',
-  'http://10.0.2.2:8000/api',
-];
+const CANDIDATE_BASE_URLS = Array.from(
+  new Set([
+    API_BASE_URL,
+    `http://${DEV_LAN_IP}:8000/api`,
+    Platform.select({
+      android: 'http://10.0.2.2:8000/api',
+      ios: 'http://localhost:8000/api',
+      default: 'http://127.0.0.1:8000/api',
+    }) as string,
+  ])
+).filter(Boolean);
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    ...(options.headers || {}),
+    ...(options.headers as any || {}),
   };
 
-  let lastError: any = null;
+  const primaryUrl = `${API_BASE_URL}${endpoint}`;
 
+  // 1. Try Primary Active LAN IP first with direct native fetch
+  try {
+    const res = await fetch(primaryUrl, {
+      ...options,
+      headers,
+    });
+
+    if (res.ok || res.status === 422 || res.status === 401 || res.status === 404 || res.status === 201) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (primaryErr: any) {
+    console.warn(`[Mobile API] Primary URL (${primaryUrl}) failed:`, primaryErr?.message || primaryErr);
+  }
+
+  // 2. Fallback candidates if physical LAN IP had an issue (e.g. localhost for simulator)
   for (const base of CANDIDATE_BASE_URLS) {
+    if (base === API_BASE_URL) continue;
     try {
       const url = `${base}${endpoint}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
-
       const res = await fetch(url, {
         ...options,
         headers,
-        signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-
-      if (res.ok || res.status === 422 || res.status === 401 || res.status === 404) {
+      if (res.ok || res.status === 422 || res.status === 401 || res.status === 404 || res.status === 201) {
         const data = await res.json();
         return data;
       }
-    } catch (err: any) {
-      lastError = err;
+    } catch (err) {
+      // Continue to next candidate
     }
   }
 
-  console.warn(`[Mobile API] Connection error on ${endpoint}:`, lastError?.message);
-  throw lastError || new Error(`Failed to connect to ${endpoint}`);
+  throw new Error(`Could not connect to ${endpoint} on server ${API_BASE_URL}`);
 }
 
 export const api = {
@@ -345,24 +359,70 @@ export const api = {
     }
   },
 
+  // Upload Image to Backend (public/uploads)
+  async uploadImage(
+    fileUriOrBase64: string,
+    isBase64: boolean = false
+  ): Promise<{ success: boolean; url?: string; full_url?: string; filename?: string; error?: string }> {
+    try {
+      if (isBase64 || fileUriOrBase64.startsWith('data:image')) {
+        return await request('/upload', {
+          method: 'POST',
+          body: JSON.stringify({ base64: fileUriOrBase64 }),
+        });
+      }
+
+      const formData = new FormData();
+      const filename = fileUriOrBase64.split('/').pop() || 'photo.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // @ts-ignore
+      formData.append('file', {
+        uri: fileUriOrBase64,
+        name: filename,
+        type,
+      });
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return await response.json();
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Image upload failed' };
+    }
+  },
+
   // Dynamic Repairs API
   async createRepair(params: {
+    user_id?: number;
+    customer_name?: string;
+    customer_phone?: string;
     device: string;
     service: string;
     problem: string;
+    description?: string;
+    photos?: string[];
     estimate: number;
-    appointmentDate: string;
+    appointment_date: string;
+    time_slot?: string;
     method: string;
-  }): Promise<{ success: boolean; message: string; repair?: ApiRepair }> {
+    address?: string;
+  }): Promise<{ success: boolean; message: string; repair?: ApiRepair; error?: string }> {
     try {
       return await request('/repairs', {
         method: 'POST',
         body: JSON.stringify(params),
       });
-    } catch (err) {
+    } catch (err: any) {
       return {
-        success: true,
-        message: 'Repair booking scheduled.',
+        success: false,
+        message: err?.message || 'Repair booking failed.',
       };
     }
   },

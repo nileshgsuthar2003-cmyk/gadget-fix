@@ -15,14 +15,25 @@ class Repair extends Model
     protected $fillable = [
         'id',
         'user_id',
+        'customer_name',
+        'customer_phone',
         'device',
         'service',
         'problem',
+        'description',
+        'photos',
         'status',
         'estimate',
         'appointment_date',
+        'time_slot',
         'method',
+        'address',
         'payment_status',
+    ];
+
+    protected $casts = [
+        'photos' => 'array',
+        'estimate' => 'float',
     ];
 
     public function user()

@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator 
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Image 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { 
   Search, Smartphone, Check, ImagePlus, Video, X, Store, 
-  Truck, Home as HomeIcon, Building2, ChevronRight, ChevronLeft, ShieldCheck 
+  Truck, Home as HomeIcon, Building2, ChevronRight, ChevronLeft, ShieldCheck, Camera 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { 
   problems, timeSlots, appointmentDays, inr, CUSTOMER_NAME 
 } from '../lib/data';
-import { api, ApiBrand, ApiModel, ApiModelService } from '../lib/api';
+import { api, ApiBrand, ApiModel, ApiModelService, API_BASE_URL } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -28,13 +30,13 @@ const stepTitles: Record<number, { title: string; sub: string }> = {
   6: { title: "Choose an appointment", sub: "Pick a convenient date & time" },
   7: { title: "Repair method", sub: "How should we repair your phone?" },
   8: { title: "Pickup address", sub: "Where should we collect your phone?" },
-  9: { title: "Booking summary", sub: "Review and confirm" },
+  9: { title: "Confirm booking", sub: "Review details & book" }
 };
 
 export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
-
+  
   const [step, setStep] = useState(1);
   
   // Dynamic Catalog State
@@ -59,23 +61,32 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   const [modelQuery, setModelQuery] = useState('');
   const [selectedProblems, setSelectedProblems] = useState<string[]>([]);
   const [description, setDescription] = useState('');
-  const [photos, setPhotos] = useState<number[]>([1]);
+  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [day, setDay] = useState(2);
   const [slot, setSlot] = useState<string>('11:00 AM');
   const [method, setMethod] = useState<'store' | 'pickup' | ''>('pickup');
   const [addressId, setAddressId] = useState<string>('home');
   const [showAddressForm, setShowAddressForm] = useState(false);
 
-  // 1. Fetch Dynamic Brands from MySQL API
-  useEffect(() => {
-    const fetchBrands = async () => {
+  // 1. Fetch Dynamic Brands from MySQL API (Auto-refresh on screen focus)
+  const fetchBrands = useCallback(async () => {
+    try {
       setLoadingBrands(true);
       const data = await api.getBrands();
       setBrandsList(data);
+    } catch (e) {
+      console.warn('Could not fetch brands');
+    } finally {
       setLoadingBrands(false);
-    };
-    fetchBrands();
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchBrands();
+    }, [fetchBrands])
+  );
 
   // 2. Fetch Dynamic Models when Brand is selected
   useEffect(() => {
@@ -106,6 +117,64 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
       fetchServices();
     }
   }, [selectedModelObj]);
+
+  // Pick or take photo and upload to backend (public/uploads)
+  const pickImage = async (useCamera = false) => {
+    try {
+      let result;
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Camera permission is required to take photos of your phone.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          quality: 0.6,
+          base64: true,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Gallery permission is required to upload photos.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsMultipleSelection: true,
+          quality: 0.6,
+          base64: true,
+        });
+      }
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setIsUploadingPhoto(true);
+        for (const asset of result.assets) {
+          try {
+            const base64Data = asset.base64
+              ? `data:image/jpeg;base64,${asset.base64}`
+              : asset.uri;
+
+            const uploadRes = await api.uploadImage(base64Data, !!asset.base64);
+            if (uploadRes && uploadRes.success && uploadRes.url) {
+              setUploadedPhotos((prev) => [...prev, uploadRes.url!]);
+            } else {
+              console.warn('Upload response:', uploadRes);
+              Alert.alert('Upload Error', 'Could not upload photo to server. Please ensure connection.');
+            }
+          } catch (e: any) {
+            console.warn('Upload error:', e?.message || e);
+            Alert.alert('Upload Error', 'Failed to upload photo to backend server.');
+          }
+        }
+        setIsUploadingPhoto(false);
+      }
+    } catch (err) {
+      console.warn('Image picker error:', err);
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const effectiveStep = step === 8 && method === 'store' ? 9 : step;
   
@@ -143,35 +212,64 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     }
   };
 
+  const defaultAddresses = [
+    { id: "home", label: "Home", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053" },
+    { id: "office", label: "Office", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013" },
+  ];
+
   // Submit Booking to MySQL Backend
   const handleConfirmBooking = async () => {
     setIsSubmitting(true);
 
     try {
-      const appointmentDateStr = `${appointmentDays[day]?.date} 2026, ${slot || '11:00 AM'}`;
+      const appointmentDateStr = `${appointmentDays[day]?.date} 2026`;
+      const selectedAddress = defaultAddresses.find(a => a.id === addressId)?.line || 'Doorstep Pickup Address';
 
-      await api.createRepair({
-        device: `${brand} ${model}`,
+      const res = await api.createRepair({
+        user_id: user?.id || 1,
+        customer_name: user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : CUSTOMER_NAME || 'Rahul Sharma'),
+        customer_phone: user?.phone || '9876543210',
+        device: `${brand} ${model}`.trim() || 'Smartphone',
         service: selectedServiceObj?.service_name || 'Screen Replacement',
         problem: selectedProblems.join(', ') || 'Diagnostic Repair',
+        description: description.trim() || undefined,
+        photos: uploadedPhotos,
         estimate: total,
-        appointmentDate: appointmentDateStr,
+        appointment_date: appointmentDateStr,
+        time_slot: slot || '11:00 AM',
         method: method === 'pickup' ? 'Doorstep Pickup & Delivery' : 'Store Visit',
+        address: method === 'pickup' ? selectedAddress : 'Fixly Service Hub',
       });
 
       setIsSubmitting(false);
 
-      Alert.alert(
-        '🎉 Repair Booked Successfully!',
-        `Your booking for ${brand} ${model} has been saved to Fixly Control Center. A technician will arrive at ${slot}.`,
-        [{ text: 'View Home', onPress: () => navigation.navigate('Home') }]
-      );
+      if (res && (res.success || res.repair)) {
+        const repairId = res.repair?.id || 'REP-2026';
+        Alert.alert(
+          '🎉 Repair Booked Successfully!',
+          `Your booking #${repairId.replace('REP-2026-', '')} for ${brand} ${model} has been saved to MySQL.\n\nTechnician appointment: ${appointmentDateStr} at ${slot}.`,
+          [
+            { 
+              text: 'View My Repairs', 
+              onPress: () => {
+                setStep(1);
+                setDescription('');
+                setUploadedPhotos([]);
+                setSelectedProblems([]);
+                navigation.navigate('MyRepairs' as any);
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Notice', res?.message || 'Booking completed.');
+        navigation.navigate('MyRepairs' as any);
+      }
     } catch (err: any) {
       setIsSubmitting(false);
       Alert.alert(
-        'Booking Confirmed!',
-        `Your repair request for ${brand} ${model} is scheduled.`,
-        [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
+        'Booking Error',
+        err?.message || 'Could not connect to backend server. Please check connection.'
       );
     }
   };
@@ -361,24 +459,54 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                 onChangeText={setDescription}
               />
               
-              <Text style={[styles.subHeading, { color: theme.text }]}>Add Photos</Text>
+              <Text style={[styles.subHeading, { color: theme.text }]}>Add Photos of Damaged Phone</Text>
               <View style={styles.photoGrid}>
-                {photos.map(p => (
-                  <View key={p} style={[styles.photoBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
-                    <Smartphone size={32} color={theme.textMuted} />
-                    <TouchableOpacity style={styles.removePhoto} onPress={() => setPhotos([])}>
-                      <X size={12} color="#fff" />
+                {uploadedPhotos.map((photoUrl, index) => {
+                  const imageUri = photoUrl.startsWith('http') || photoUrl.startsWith('file:') || photoUrl.startsWith('content:')
+                    ? photoUrl
+                    : `${API_BASE_URL.replace('/api', '')}${photoUrl}`;
+                  return (
+                    <View key={index} style={[styles.photoBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
+                      <Image source={{ uri: imageUri }} style={styles.photoImg} resizeMode="cover" />
+                      <TouchableOpacity 
+                        style={styles.removePhoto} 
+                        onPress={() => setUploadedPhotos(prev => prev.filter((_, i) => i !== index))}
+                      >
+                        <X size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+
+                {isUploadingPhoto ? (
+                  <View style={[styles.addPhotoBox, { borderColor: theme.primary, backgroundColor: theme.primarySoft }]}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                    <Text style={{ fontSize: 10, color: theme.primary, fontWeight: '700', marginTop: 4 }}>Uploading...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity 
+                      style={[styles.addPhotoBox, { borderColor: theme.cardBorder, backgroundColor: theme.surface }]} 
+                      onPress={() => pickImage(false)}
+                      activeOpacity={0.7}
+                    >
+                      <ImagePlus size={22} color={theme.primary} />
+                      <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '700', marginTop: 3 }}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.addPhotoBox, { borderColor: theme.cardBorder, backgroundColor: theme.surface }]} 
+                      onPress={() => pickImage(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Camera size={22} color={theme.primary} />
+                      <Text style={{ fontSize: 11, color: theme.textSecondary, fontWeight: '700', marginTop: 3 }}>Camera</Text>
                     </TouchableOpacity>
                   </View>
-                ))}
-                <TouchableOpacity 
-                  style={[styles.addPhotoBox, { borderColor: theme.cardBorder }]} 
-                  onPress={() => setPhotos([1])}
-                >
-                  <ImagePlus size={24} color={theme.textMuted} />
-                </TouchableOpacity>
+                )}
               </View>
-              <Text style={[styles.hintText, { color: theme.textSecondary }]}>Photos help our certified technician prepare.</Text>
+              <Text style={[styles.hintText, { color: theme.textSecondary }]}>
+                Photos are stored in backend so certified technicians can prepare spare parts.
+              </Text>
             </View>
           )}
 
@@ -413,15 +541,23 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                     }}
                     activeOpacity={0.7}
                   >
-                    <View style={{ flex: 1 }}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
                       <Text style={[
                         styles.serviceRowName, 
                         { color: theme.text },
                         serviceId === String(s.id) && { color: theme.primary }
                       ]}>{s.service_name}</Text>
-                      <Text style={[styles.serviceRowTag, { color: theme.textSecondary }]}>
-                        ⭐ {s.part_quality} • 🛡️ {s.warranty}
-                      </Text>
+                      {s.part_quality ? (
+                        <Text style={[styles.serviceRowTag, { color: theme.textSecondary }]}>
+                          ⭐ {s.part_quality}
+                        </Text>
+                      ) : null}
+                      <View style={styles.warrantyRow}>
+                        <ShieldCheck size={13} color={theme.primary} />
+                        <Text style={[styles.serviceWarrantyText, { color: theme.textSecondary }]}>
+                          Warranty: <Text style={{ fontWeight: '700', color: theme.text }}>{s.warranty || '6 Months'}</Text>
+                        </Text>
+                      </View>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
                       <Text style={[styles.serviceRowPrice, { color: theme.text }]}>{inr(s.price)}</Text>
@@ -712,23 +848,29 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   subHeading: { fontSize: 14, fontWeight: '700', marginBottom: 10 },
-  photoGrid: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   photoBox: {
-    width: 70,
-    height: 70,
+    width: 78,
+    height: 78,
     borderRadius: 14,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 1.5,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  photoImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
   },
   addPhotoBox: {
-    width: 70,
-    height: 70,
+    width: 78,
+    height: 78,
     borderRadius: 14,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 6,
   },
   removePhoto: {
     position: 'absolute',
@@ -736,7 +878,11 @@ const styles = StyleSheet.create({
     right: 4,
     backgroundColor: '#ef4444',
     borderRadius: 10,
-    padding: 2,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   hintText: { fontSize: 12, marginTop: 4 },
   serviceRowTile: {
@@ -750,6 +896,8 @@ const styles = StyleSheet.create({
   },
   serviceRowName: { fontSize: 15, fontWeight: '800' },
   serviceRowTag: { fontSize: 12, marginTop: 2 },
+  warrantyRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  serviceWarrantyText: { fontSize: 12 },
   serviceRowPrice: { fontSize: 16, fontWeight: '900' },
   warningBox: { padding: 12, borderRadius: 12, marginTop: 8 },
   warningText: { fontSize: 12, fontWeight: '600' },
