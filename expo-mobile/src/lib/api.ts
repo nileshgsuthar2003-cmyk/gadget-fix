@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { brands as fallbackBrands, modelsByBrand as fallbackModelsByBrand, servicesForDevice as fallbackServices } from './data';
 
 // Dynamic Environment Configuration (Loaded from .env / EXPO_PUBLIC_*)
-const DEV_LAN_IP = process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.125.174.212';
+const DEV_LAN_IP = process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.125.174.211';
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const API_BASE_URL = ENV_API_URL || Platform.select({
