@@ -69,6 +69,26 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   const [addressId, setAddressId] = useState<string>('home');
   const [showAddressForm, setShowAddressForm] = useState(false);
 
+  const resetBookingForm = useCallback(() => {
+    setStep(1);
+    setBrand('');
+    setSelectedBrandObj(null);
+    setBrandQuery('');
+    setModel('');
+    setSelectedModelObj(null);
+    setModelQuery('');
+    setSelectedProblems([]);
+    setDescription('');
+    setUploadedPhotos([]);
+    setIsUploadingPhoto(false);
+    setServiceId('');
+    setSelectedServiceObj(null);
+    setDay(0);
+    setMethod('pickup');
+    setAddressId('home');
+    setShowAddressForm(false);
+  }, []);
+
   // 1. Fetch Dynamic Brands from MySQL API (Auto-refresh on screen focus)
   const fetchBrands = useCallback(async () => {
     try {
@@ -85,7 +105,10 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   useFocusEffect(
     useCallback(() => {
       fetchBrands();
-    }, [fetchBrands])
+      if (step === 9) {
+        resetBookingForm();
+      }
+    }, [fetchBrands, step, resetBookingForm])
   );
 
   // 2. Fetch Dynamic Models when Brand is selected
@@ -253,10 +276,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
             { 
               text: 'View My Repairs', 
               onPress: () => {
-                setStep(1);
-                setDescription('');
-                setUploadedPhotos([]);
-                setSelectedProblems([]);
+                resetBookingForm();
                 navigation.navigate('MyRepairs' as any);
               }
             }

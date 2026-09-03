@@ -650,6 +650,17 @@ function BookWizard() {
                     address: method === "pickup" ? (addressId === "office" ? "3rd Floor, Trade View, Lower Parel, Mumbai" : "B-42, Rose Apartments, Andheri West, Mumbai 400053") : "Fixly Service Hub",
                   });
                 } catch (e) {}
+                setStep(1);
+                setBrand("");
+                setSelectedBrandObj(null);
+                setModel("");
+                setSelectedModelObj(null);
+                setSelectedProblems([]);
+                setDescription("");
+                setPhotos([]);
+                setServiceId("");
+                setSelectedServiceObj(null);
+                setDay(0);
                 toast.success("Repair booked successfully in MySQL!");
                 navigate({ to: "/booking-success" as any });
               }}
