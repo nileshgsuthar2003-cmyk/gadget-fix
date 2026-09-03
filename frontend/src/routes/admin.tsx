@@ -376,14 +376,20 @@ function AdminPage() {
     }
   };
 
+  // Auto-fetch fresh data whenever switching tabs or opening the page
   useEffect(() => {
     if (isAdminAuthenticated) {
-      loadBrands();
-      loadDashboardData();
-      loadServicesData();
-      loadUsersData();
+      if (activeTab === "catalog") {
+        loadBrands();
+      } else if (activeTab === "dashboard" || activeTab === "repairs") {
+        loadDashboardData();
+      } else if (activeTab === "services") {
+        loadServicesData();
+      } else if (activeTab === "users") {
+        loadUsersData();
+      }
     }
-  }, [isAdminAuthenticated]);
+  }, [activeTab, isAdminAuthenticated]);
 
   // Brand Actions
   const handleAddBrand = async (e: React.FormEvent) => {

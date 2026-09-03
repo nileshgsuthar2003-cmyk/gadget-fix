@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Battery,
@@ -18,11 +19,13 @@ import {
   Star,
   CheckCircle2,
   Wrench,
+  Cpu,
 } from "lucide-react";
 import { Card, SectionTitle, StatusBadge } from "@/components/ui";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { CustomerNav, Header, Screen } from "@/components/shell";
-import { CUSTOMER_NAME, inr, popularServices, repairs } from "@/lib/data";
+import { CUSTOMER_NAME, inr, popularServices as fallbackServices, repairs as fallbackRepairs } from "@/lib/data";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/home")({
   head: () => ({
@@ -43,17 +46,42 @@ const iconMap: Record<string, typeof Smartphone> = {
   camera: Camera,
   speaker: Speaker,
   droplets: Droplets,
+  cpu: Cpu,
+  wrench: Wrench,
 };
 
-const browseServices = [
-  { name: "Screen Replacement", from: 999, note: "Original & high-grade compatible displays", time: "30 Mins" },
-  { name: "Battery Replacement", from: 799, note: "100% health & 6-month warranty", time: "20 Mins" },
-  { name: "Charging Port Repair", from: 499, note: "Clean, solder & port replacement", time: "25 Mins" },
-  { name: "Camera Module Fix", from: 899, note: "Sensor & glass lens repair", time: "40 Mins" },
-];
-
 function Home() {
-  const current = repairs[0]!;
+  const [liveServices, setLiveServices] = useState<any[]>([...fallbackServices]);
+  const [activeRepair, setActiveRepair] = useState<any | null>(null);
+
+  // Auto-fetch fresh live data on page navigation
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      try {
+        const [servicesRes, repairsRes] = await Promise.all([
+          api.getServices().catch(() => null),
+          api.getMyRepairs().catch(() => null),
+        ]);
+
+        if (servicesRes && servicesRes.success && Array.isArray(servicesRes.services) && servicesRes.services.length > 0) {
+          setLiveServices(servicesRes.services);
+        }
+
+        if (repairsRes && repairsRes.success && Array.isArray(repairsRes.repairs)) {
+          const active = repairsRes.repairs.find(
+            (r: any) => r.status !== "Completed" && r.status !== "Cancelled"
+          );
+          setActiveRepair(active || (repairsRes.repairs.length > 0 ? repairsRes.repairs[0] : null));
+        }
+      } catch (e) {
+        // keep fallbacks
+      }
+    };
+
+    fetchHomeData();
+  }, []);
+
+  const current = activeRepair || fallbackRepairs[0];
   const firstName = CUSTOMER_NAME.split(" ")[0];
 
   return (
@@ -162,8 +190,9 @@ function Home() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-            {popularServices.map((s) => {
-              const Icon = iconMap[s.icon] ?? Smartphone;
+            {liveServices.slice(0, 6).map((s) => {
+              const iconKey = (s.icon || 'smartphone').toLowerCase();
+              const Icon = iconMap[iconKey] ?? Smartphone;
               return (
                 <Link
                   key={s.id}
