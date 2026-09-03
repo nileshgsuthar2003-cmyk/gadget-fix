@@ -440,4 +440,53 @@ export const api = {
       };
     }
   },
+
+  // Promotional Banners from Laravel MySQL
+  async getBanners(): Promise<{ success: boolean; banners: ApiBanner[] }> {
+    try {
+      return await request('/banners', {
+        method: 'GET',
+      });
+    } catch (err) {
+      return {
+        success: true,
+        banners: [
+          {
+            id: 1,
+            title: 'Flat ₹500 Off Screen Repairs',
+            subtitle: 'Use promo code FIX500 at checkout · Doorstep fix in 30 mins',
+            badge_text: 'FLASH DEAL',
+            bg_gradient: 'blue',
+            link_type: 'book',
+            is_active: true,
+            display_order: 1,
+          },
+          {
+            id: 2,
+            title: 'Sell Old Phone & Get Instant Cash',
+            subtitle: 'Free doorstep evaluation · Highest trade-in price guaranteed',
+            badge_text: 'INSTANT PAYOUT',
+            bg_gradient: 'amber',
+            link_type: 'sell',
+            is_active: true,
+            display_order: 2,
+          }
+        ],
+      };
+    }
+  },
 };
+
+export interface ApiBanner {
+  id: number;
+  title: string;
+  subtitle?: string;
+  badge_text?: string;
+  image_url?: string;
+  bg_gradient?: string; // 'blue' | 'purple' | 'emerald' | 'amber' | 'dark'
+  link_type?: string; // 'book' | 'buy' | 'sell' | 'service' | 'external'
+  link_value?: string;
+  is_active: boolean;
+  display_order?: number;
+}
+

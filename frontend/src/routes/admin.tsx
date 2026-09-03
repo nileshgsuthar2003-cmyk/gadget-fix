@@ -52,6 +52,8 @@ import {
   Shield,
   KeyRound,
   Phone,
+  Megaphone,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Card, StatusBadge } from "@/components/ui";
 import { inr, RepairStatus } from "@/lib/data";
@@ -99,6 +101,20 @@ interface DynamicService {
   icon: string;
   starting_price?: number;
   category?: string;
+}
+
+interface DynamicBanner {
+  id: number;
+  title: string;
+  subtitle?: string;
+  badge_text?: string;
+  image_url?: string;
+  bg_gradient?: string;
+  link_type?: string;
+  link_value?: string;
+  is_active: boolean;
+  display_order?: number;
+  created_at?: string;
 }
 
 interface DynamicRepair {
@@ -171,7 +187,7 @@ function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Admin Dashboard State
-  const [activeTab, setActiveTab] = useState<"catalog" | "services" | "dashboard" | "repairs" | "users">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "services" | "banners" | "dashboard" | "repairs" | "users">("catalog");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("" );
@@ -268,6 +284,25 @@ function AdminPage() {
   const [editUPhone, setEditUPhone] = useState("");
   const [editURole, setEditURole] = useState("customer");
   const [editUPassword, setEditUPassword] = useState("");
+
+  // Banners & Advertisement State
+  const [bannersLoading, setBannersLoading] = useState(true);
+  const [bannerList, setBannerList] = useState<DynamicBanner[]>([]);
+  const [isAddBannerOpen, setIsAddBannerOpen] = useState(false);
+  const [isEditBannerOpen, setIsEditBannerOpen] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<DynamicBanner | null>(null);
+
+  const [bTitle, setBTitle] = useState("");
+  const [bSubtitle, setBSubtitle] = useState("");
+  const [bBadge, setBBadge] = useState("SPECIAL OFFER");
+  const [bBgGradient, setBBgGradient] = useState("blue");
+  const [bLinkType, setBLinkType] = useState("book");
+  const [bLinkValue, setBLinkValue] = useState("");
+  const [bImageUrl, setBImageUrl] = useState("");
+  const [bIsActive, setBIsActive] = useState(true);
+  const [bOrder, setBOrder] = useState("1");
+  const [bImageUploading, setBImageUploading] = useState(false);
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
 
   // Fetch Brands from Database
   const loadBrands = async () => {
@@ -376,6 +411,20 @@ function AdminPage() {
     }
   };
 
+  const loadBannersData = async () => {
+    try {
+      setBannersLoading(true);
+      const res = await api.getAdminBanners();
+      if (res && Array.isArray(res.banners)) {
+        setBannerList(res.banners);
+      }
+    } catch (e) {
+      console.warn("Could not load banners.");
+    } finally {
+      setBannersLoading(false);
+    }
+  };
+
   // Auto-fetch fresh data whenever switching tabs or opening the page
   useEffect(() => {
     if (isAdminAuthenticated) {
@@ -385,6 +434,8 @@ function AdminPage() {
         loadDashboardData();
       } else if (activeTab === "services") {
         loadServicesData();
+      } else if (activeTab === "banners") {
+        loadBannersData();
       } else if (activeTab === "users") {
         loadUsersData();
       }
@@ -649,6 +700,134 @@ function AdminPage() {
     } catch (err) {
       toast.error("Could not delete service.");
     }
+  };
+
+  // Banner Actions
+  const handleCreateBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bTitle.trim()) {
+      toast.error("Please enter a banner title.");
+      return;
+    }
+
+    try {
+      setIsSavingBanner(true);
+      const res = await api.createBanner({
+        title: bTitle.trim(),
+        subtitle: bSubtitle.trim() || undefined,
+        badge_text: bBadge.trim() || undefined,
+        image_url: bImageUrl.trim() || undefined,
+        bg_gradient: bBgGradient,
+        link_type: bLinkType,
+        link_value: bLinkValue.trim() || undefined,
+        is_active: bIsActive,
+        display_order: Number(bOrder) || 0,
+      });
+
+      if (res && res.success && res.banner) {
+        setBannerList((prev) => [res.banner, ...prev]);
+        toast.success("Advertisement banner created & published to App!");
+        setIsAddBannerOpen(false);
+        resetBannerForm();
+      } else {
+        toast.error((res as any)?.message || "Failed to create banner.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save banner.");
+    } finally {
+      setIsSavingBanner(false);
+    }
+  };
+
+  const handleUpdateBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBanner) return;
+    if (!bTitle.trim()) {
+      toast.error("Please enter a banner title.");
+      return;
+    }
+
+    try {
+      setIsSavingBanner(true);
+      const res = await api.updateBanner(editingBanner.id, {
+        title: bTitle.trim(),
+        subtitle: bSubtitle.trim() || undefined,
+        badge_text: bBadge.trim() || undefined,
+        image_url: bImageUrl.trim() || undefined,
+        bg_gradient: bBgGradient,
+        link_type: bLinkType,
+        link_value: bLinkValue.trim() || undefined,
+        is_active: bIsActive,
+        display_order: Number(bOrder) || 0,
+      });
+
+      if (res && res.success && res.banner) {
+        setBannerList((prev) =>
+          prev.map((b) => (b.id === editingBanner.id ? res.banner : b))
+        );
+        toast.success("Advertisement banner updated successfully!");
+        setIsEditBannerOpen(false);
+        setEditingBanner(null);
+        resetBannerForm();
+      } else {
+        toast.error((res as any)?.message || "Failed to update banner.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update banner.");
+    } finally {
+      setIsSavingBanner(false);
+    }
+  };
+
+  const handleToggleBannerActive = async (banner: DynamicBanner) => {
+    try {
+      const nextStatus = !banner.is_active;
+      await api.updateBanner(banner.id, { is_active: nextStatus });
+      setBannerList((prev) =>
+        prev.map((b) => (b.id === banner.id ? { ...b, is_active: nextStatus } : b))
+      );
+      toast.success(nextStatus ? "Banner is now LIVE on App Home!" : "Banner hidden from App Home.");
+    } catch (e) {
+      toast.error("Could not update banner status.");
+    }
+  };
+
+  const handleDeleteBanner = async (id: number, title: string) => {
+    if (!confirm(`Are you sure you want to delete banner "${title}"?`)) return;
+    try {
+      await api.deleteBanner(id);
+      setBannerList((prev) => prev.filter((b) => b.id !== id));
+      toast.success(`Deleted banner "${title}".`);
+    } catch (e) {
+      toast.error("Could not delete banner.");
+    }
+  };
+
+  const handleOpenEditBanner = (b: DynamicBanner) => {
+    setEditingBanner(b);
+    setBTitle(b.title);
+    setBSubtitle(b.subtitle || "");
+    setBBadge(b.badge_text || "SPECIAL OFFER");
+    setBBgGradient(b.bg_gradient || "blue");
+    setBLinkType(b.link_type || "book");
+    setBLinkValue(b.link_value || "");
+    setBImageUrl(b.image_url || "");
+    setBIsActive(b.is_active);
+    setBOrder(String(b.display_order || 0));
+    setIsEditBannerOpen(true);
+  };
+
+  const resetBannerForm = () => {
+    setBTitle("");
+    setBSubtitle("");
+    setBBadge("SPECIAL OFFER");
+    setBBgGradient("blue");
+    setBLinkType("book");
+    setBLinkValue("");
+    setBImageUrl("");
+    setBIsActive(true);
+    setBOrder("1");
+    setEditingBanner(null);
   };
 
   // User Management Handlers
@@ -950,6 +1129,7 @@ function AdminPage() {
   const navItems = [
     { id: "catalog", label: "Brands & Pricing Catalog", icon: TabletSmartphone, badge: `${brands.length}`, category: "CATALOG" },
     { id: "services", label: "Master Services", icon: Wrench, badge: `${serviceList.length}`, category: "CATALOG" },
+    { id: "banners", label: "Banners & Advertisements", icon: Megaphone, badge: `${bannerList.length}`, category: "CATALOG" },
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, badge: null, category: "MAIN" },
     { id: "repairs", label: "Repairs & Bookings", icon: ClipboardList, badge: `${repairList.length}`, category: "MAIN" },
     { id: "users", label: "Users & Accounts", icon: Users, badge: `${userList.length}`, category: "MANAGEMENT" },
@@ -1157,6 +1337,7 @@ function AdminPage() {
               <h2 className="text-base md:text-lg font-black tracking-tight text-foreground capitalize">
                 {activeTab === "catalog" && "Phone Brands, Models & Repair Pricing"}
                 {activeTab === "services" && "Master Repair Services"}
+                {activeTab === "banners" && "Promotional & Advertisement Banners"}
                 {activeTab === "dashboard" && "Dashboard Overview"}
                 {activeTab === "repairs" && "Repair Orders & Queue"}
                 {activeTab === "users" && "User Accounts & Customer Directory"}
@@ -1171,6 +1352,7 @@ function AdminPage() {
                 loadBrands();
                 loadDashboardData();
                 loadServicesData();
+                loadBannersData();
                 loadUsersData();
                 toast.success("Synchronized with MySQL database.");
               }}
@@ -1186,6 +1368,18 @@ function AdminPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
               >
                 <Plus className="h-3.5 w-3.5" /> Add Service Name
+              </button>
+            )}
+
+            {activeTab === "banners" && (
+              <button
+                onClick={() => {
+                  resetBannerForm();
+                  setIsAddBannerOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add New Banner
               </button>
             )}
 
@@ -1606,6 +1800,195 @@ function AdminPage() {
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================== */}
+          {/* BANNERS & ADVERTISEMENTS MANAGEMENT TAB */}
+          {/* ========================================== */}
+          {activeTab === "banners" && (
+            <div className="space-y-6">
+              {/* Header Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-blue-600/15 via-indigo-600/5 to-card border border-blue-500/20 shadow-sm">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-500 mb-2">
+                    <Megaphone className="h-3.5 w-3.5" /> App Home Banners & Ads Master
+                  </div>
+                  <h3 className="text-xl font-extrabold text-foreground">Promotional & Advertisement Banners</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Active banners configured here appear live inside the Customer Mobile App on the Home page under the search bar.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    resetBannerForm();
+                    setIsAddBannerOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-xs font-bold text-primary-foreground shadow-md hover:bg-primary/90 transition-transform active:scale-95 shrink-0"
+                >
+                  <Plus className="h-4 w-4" /> Add New Banner
+                </button>
+              </div>
+
+              {/* Stats Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="p-4 border-border flex items-center gap-3.5">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Megaphone className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Banners</p>
+                    <p className="text-xl font-black text-foreground">{bannerList.length}</p>
+                  </div>
+                </Card>
+
+                <Card className="p-4 border-border flex items-center gap-3.5">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active On App</p>
+                    <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                      {bannerList.filter((b) => b.is_active).length} Live
+                    </p>
+                  </div>
+                </Card>
+
+                <Card className="p-4 border-border flex items-center gap-3.5">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500/10 text-amber-500">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Target Actions</p>
+                    <p className="text-xl font-black text-foreground">Book · Sell · Buy</p>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Banners Grid */}
+              {bannersLoading ? (
+                <div className="py-16 text-center text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="text-xs">Loading banners from database...</p>
+                </div>
+              ) : bannerList.length === 0 ? (
+                <div className="py-16 text-center border-2 border-dashed border-border rounded-3xl bg-card/50">
+                  <Megaphone className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+                  <h4 className="text-sm font-bold text-foreground">No Advertisement Banners Yet</h4>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 mb-4">
+                    Create high-converting promotional banners to feature discounts, cash-for-phone deals, and repair coupons in the mobile app.
+                  </p>
+                  <button
+                    onClick={() => {
+                      resetBannerForm();
+                      setIsAddBannerOpen(true);
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4" /> Create First Banner
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {bannerList.map((banner) => {
+                    const gradientClass =
+                      banner.bg_gradient === "purple"
+                        ? "from-purple-700 via-indigo-600 to-pink-600"
+                        : banner.bg_gradient === "emerald"
+                        ? "from-emerald-600 via-teal-600 to-green-700"
+                        : banner.bg_gradient === "amber"
+                        ? "from-amber-600 via-orange-600 to-yellow-600"
+                        : banner.bg_gradient === "dark"
+                        ? "from-slate-900 via-slate-800 to-slate-950 border-slate-700"
+                        : "from-blue-600 via-indigo-600 to-sky-700";
+
+                    return (
+                      <Card key={banner.id} className="overflow-hidden border-border p-0 shadow-md">
+                        {/* Live App Simulation Preview */}
+                        <div
+                          className={`relative p-5 bg-gradient-to-r ${gradientClass} text-white flex items-center justify-between min-h-[125px]`}
+                        >
+                          <div className="flex-1 pr-4 z-10">
+                            {banner.badge_text && (
+                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black tracking-wider uppercase mb-1.5 text-white shadow-sm border border-white/20">
+                                {banner.badge_text}
+                              </span>
+                            )}
+                            <h4 className="text-base font-black leading-tight text-white drop-shadow-sm">
+                              {banner.title}
+                            </h4>
+                            {banner.subtitle && (
+                              <p className="text-xs text-white/85 font-medium mt-1 line-clamp-2 leading-relaxed">
+                                {banner.subtitle}
+                              </p>
+                            )}
+                            <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white text-slate-950 text-[10px] font-extrabold shadow-sm">
+                              <span>Action: {banner.link_type === "book" ? "Book Repair" : banner.link_type === "sell" ? "Sell Phone" : banner.link_type === "buy" ? "Buy Refurbished" : "Custom Link"}</span>
+                              <ArrowRight className="h-3 w-3" />
+                            </div>
+                          </div>
+
+                          {banner.image_url ? (
+                            <div className="h-20 w-20 rounded-2xl overflow-hidden bg-white/10 backdrop-blur-sm border border-white/20 shadow-md shrink-0">
+                              <img
+                                src={banner.image_url.startsWith("http") ? banner.image_url : `http://127.0.0.1:8000${banner.image_url}`}
+                                alt={banner.title}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 shrink-0">
+                              <Sparkles className="h-7 w-7" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Management Controls Footer */}
+                        <div className="p-4 bg-card flex items-center justify-between border-t border-border">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleToggleBannerActive(banner)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                                banner.is_active
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                              }`}
+                            >
+                              <span
+                                className={`h-2 w-2 rounded-full ${
+                                  banner.is_active ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground"
+                                }`}
+                              />
+                              {banner.is_active ? "Live in App" : "Hidden (Inactive)"}
+                            </button>
+                            <span className="text-[11px] font-semibold text-muted-foreground">
+                              Order: #{banner.display_order ?? 0}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenEditBanner(banner)}
+                              className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                              title="Edit Banner"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBanner(banner.id, banner.title)}
+                              className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              title="Delete Banner"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </Card>
                     );
@@ -2853,6 +3236,250 @@ function AdminPage() {
                 >
                   {isSavingUser && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- 5. ADD / EDIT BANNER MODAL ---------- */}
+      {(isAddBannerOpen || isEditBannerOpen) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
+              <div>
+                <h3 className="text-base font-bold text-foreground">
+                  {isEditBannerOpen ? "Edit Advertisement Banner" : "Create New Advertisement Banner"}
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Configured banner will immediately show on Customer App Home
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsAddBannerOpen(false);
+                  setIsEditBannerOpen(false);
+                  resetBannerForm();
+                }}
+                className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* LIVE PREVIEW BOX */}
+            <div className="my-4">
+              <label className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground block mb-1.5">
+                Live App Preview
+              </label>
+              <div
+                className={`p-5 rounded-2xl text-white flex items-center justify-between min-h-[110px] bg-gradient-to-r ${
+                  bBgGradient === "purple"
+                    ? "from-purple-700 via-indigo-600 to-pink-600"
+                    : bBgGradient === "emerald"
+                    ? "from-emerald-600 via-teal-600 to-green-700"
+                    : bBgGradient === "amber"
+                    ? "from-amber-600 via-orange-600 to-yellow-600"
+                    : bBgGradient === "dark"
+                    ? "from-slate-900 via-slate-800 to-slate-950 border border-slate-700"
+                    : "from-blue-600 via-indigo-600 to-sky-700"
+                } shadow-md`}
+              >
+                <div className="flex-1 pr-3 z-10">
+                  {bBadge && (
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-white/20 text-[9px] font-black uppercase mb-1 tracking-wider">
+                      {bBadge}
+                    </span>
+                  )}
+                  <h4 className="text-sm font-black text-white leading-tight">
+                    {bTitle || "Your Promotional Headline Here"}
+                  </h4>
+                  <p className="text-[11px] text-white/80 font-medium mt-0.5 line-clamp-1">
+                    {bSubtitle || "Supporting offer details, coupon codes or guarantees"}
+                  </p>
+                </div>
+                {bImageUrl ? (
+                  <div className="h-14 w-14 rounded-xl overflow-hidden bg-white/10 border border-white/20 shrink-0">
+                    <img
+                      src={bImageUrl.startsWith("http") ? bImageUrl : `http://127.0.0.1:8000${bImageUrl}`}
+                      alt="Banner Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid h-12 w-12 place-items-center rounded-xl bg-white/15 text-white shrink-0">
+                    <Megaphone className="h-6 w-6" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <form
+              onSubmit={isEditBannerOpen ? handleUpdateBanner : handleCreateBanner}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-xs font-bold text-foreground block mb-1">Banner Title / Main Offer *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Flat ₹500 Off Screen Repairs"
+                  value={bTitle}
+                  onChange={(e) => setBTitle(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">Subtitle / Details</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Use Code FIX500 · 30-min doorstep fix"
+                    value={bSubtitle}
+                    onChange={(e) => setBSubtitle(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">Badge Tag</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. FLASH DEAL, LIMITED TIME"
+                    value={bBadge}
+                    onChange={(e) => setBBadge(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Gradient Palette Picker */}
+              <div>
+                <label className="text-xs font-bold text-foreground block mb-1.5">Color Palette / Gradient</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {[
+                    { id: "blue", label: "Electric Blue", class: "from-blue-600 to-sky-700" },
+                    { id: "purple", label: "Vibrant Purple", class: "from-purple-700 to-pink-600" },
+                    { id: "emerald", label: "Emerald Green", class: "from-emerald-600 to-green-700" },
+                    { id: "amber", label: "Sunset Amber", class: "from-amber-600 to-yellow-600" },
+                    { id: "dark", label: "Midnight Dark", class: "from-slate-900 to-slate-950" },
+                  ].map((grad) => (
+                    <button
+                      key={grad.id}
+                      type="button"
+                      onClick={() => setBBgGradient(grad.id)}
+                      className={`h-11 rounded-xl bg-gradient-to-r ${grad.class} flex items-center justify-center transition-all ${
+                        bBgGradient === grad.id ? "ring-2 ring-primary ring-offset-2 scale-105 shadow-md" : "opacity-80 hover:opacity-100"
+                      }`}
+                      title={grad.label}
+                    >
+                      {bBgGradient === grad.id && <Check className="h-4 w-4 text-white stroke-[3]" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action & Image */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">Target Tap Action</label>
+                  <select
+                    value={bLinkType}
+                    onChange={(e) => setBLinkType(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="book">Open Repair Booking Flow</option>
+                    <option value="sell">Open Sell Phone Flow</option>
+                    <option value="buy">Open Buy Refurbished Phones</option>
+                    <option value="external">External / Custom URL</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">Display Priority Order</label>
+                  <input
+                    type="number"
+                    value={bOrder}
+                    onChange={(e) => setBOrder(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="1"
+                  />
+                </div>
+              </div>
+
+              {/* Photo Upload or URL */}
+              <div>
+                <label className="text-xs font-bold text-foreground block mb-1">Banner Image (Optional)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="/uploads/... or paste image URL"
+                    value={bImageUrl}
+                    onChange={(e) => setBImageUrl(e.target.value)}
+                    className="h-10 flex-1 rounded-xl border border-border bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <label className="h-10 px-3.5 rounded-xl border border-border bg-muted/60 hover:bg-muted text-xs font-bold text-foreground cursor-pointer inline-flex items-center gap-1.5 shrink-0">
+                    {bImageUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+                    Upload File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            setBImageUploading(true);
+                            const res = await api.uploadImage(file);
+                            if (res && res.url) {
+                              setBImageUrl(res.url);
+                              toast.success("Image uploaded to server!");
+                            }
+                          } catch (err) {
+                            toast.error("Upload failed.");
+                          } finally {
+                            setBImageUploading(false);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="bIsActiveCheck"
+                  checked={bIsActive}
+                  onChange={(e) => setBIsActive(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <label htmlFor="bIsActiveCheck" className="text-xs font-bold text-foreground cursor-pointer">
+                  Activate & Show on Mobile App Home Page immediately
+                </label>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddBannerOpen(false);
+                    setIsEditBannerOpen(false);
+                    resetBannerForm();
+                  }}
+                  className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingBanner}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isSavingBanner && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {isEditBannerOpen ? "Update Banner" : "Publish Banner"}
                 </button>
               </div>
             </form>

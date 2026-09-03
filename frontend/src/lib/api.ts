@@ -273,4 +273,53 @@ export const api = {
   async getMyRepairs() {
     return apiRequest<{ success: boolean; repairs: any[] }>("/repairs");
   },
+
+  // Promotional Advertisement Banners
+  async getBanners() {
+    return apiRequest<{ success: boolean; banners: any[] }>("/banners");
+  },
+
+  async getAdminBanners() {
+    return apiRequest<{ success: boolean; banners: any[] }>("/admin/banners");
+  },
+
+  async createBanner(data: {
+    title: string;
+    subtitle?: string;
+    badge_text?: string;
+    image_url?: string;
+    bg_gradient?: string;
+    link_type?: string;
+    link_value?: string;
+    is_active?: boolean;
+    display_order?: number;
+  }) {
+    return apiRequest<{ success: boolean; message: string; banner: any }>("/admin/banners", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateBanner(id: number, data: Partial<{
+    title: string;
+    subtitle: string;
+    badge_text: string;
+    image_url: string;
+    bg_gradient: string;
+    link_type: string;
+    link_value: string;
+    is_active: boolean;
+    display_order: number;
+  }>) {
+    return apiRequest<{ success: boolean; message: string; banner: any }>(`/admin/banners/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteBanner(id: number) {
+    return apiRequest<{ success: boolean; message: string }>(`/admin/banners/${id}`, {
+      method: "DELETE",
+    });
+  },
 };

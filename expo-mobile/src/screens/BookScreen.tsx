@@ -105,10 +105,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
   useFocusEffect(
     useCallback(() => {
       fetchBrands();
-      if (step === 9) {
-        resetBookingForm();
-      }
-    }, [fetchBrands, step, resetBookingForm])
+    }, [fetchBrands])
   );
 
   // 2. Fetch Dynamic Models when Brand is selected

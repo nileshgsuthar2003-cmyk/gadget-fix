@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\BannerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,6 +17,9 @@ use App\Http\Controllers\Api\UploadController;
 
 // Public File & Photo Upload Endpoint (Stores in public/uploads)
 Route::post('/upload', [UploadController::class, 'upload']);
+
+// Public Promotional Banners (For Mobile App & Web Home)
+Route::get('/banners', [BannerController::class, 'index']);
 
 // Public Auth Endpoints
 Route::post('/auth/register', [AuthController::class, 'register']);
@@ -62,6 +66,12 @@ Route::get('/admin/users', [UserController::class, 'index']);
 Route::post('/admin/users', [UserController::class, 'store']);
 Route::put('/admin/users/{id}', [UserController::class, 'update']);
 Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
+
+// Admin Banners Management
+Route::get('/admin/banners', [BannerController::class, 'adminIndex']);
+Route::post('/admin/banners', [BannerController::class, 'store']);
+Route::put('/admin/banners/{id}', [BannerController::class, 'update']);
+Route::delete('/admin/banners/{id}', [BannerController::class, 'destroy']);
 
 // Public & Customer Repairs Endpoints
 Route::get('/repairs', [RepairController::class, 'index']);
