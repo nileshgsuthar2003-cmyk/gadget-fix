@@ -194,7 +194,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     (step === 3 && selectedProblems.length > 0) ||
     step === 4 ||
     (step === 5 && !!serviceId) ||
-    (step === 6 && !!slot) ||
+    (step === 6 && day >= 0) ||
     (step === 7 && !!method) ||
     step === 8 ||
     step === 9;
@@ -222,7 +222,8 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     setIsSubmitting(true);
 
     try {
-      const appointmentDateStr = `${appointmentDays[day]?.date} 2026`;
+      const selectedDayObj = appointmentDays[day] || appointmentDays[0];
+      const appointmentDateStr = `${selectedDayObj.date} ${selectedDayObj.year || 2026}`;
       const selectedAddress = defaultAddresses.find(a => a.id === addressId)?.line || 'Doorstep Pickup Address';
 
       const res = await api.createRepair({
@@ -236,7 +237,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
         photos: uploadedPhotos,
         estimate: total,
         appointment_date: appointmentDateStr,
-        time_slot: slot || '11:00 AM',
+        time_slot: 'Full Day',
         method: method === 'pickup' ? 'Doorstep Pickup & Delivery' : 'Store Visit',
         address: method === 'pickup' ? selectedAddress : 'Fixly Service Hub',
       });
@@ -247,7 +248,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
         const repairId = res.repair?.id || 'REP-2026';
         Alert.alert(
           '🎉 Repair Booked Successfully!',
-          `Your booking #${repairId.replace('REP-2026-', '')} for ${brand} ${model} has been saved to MySQL.\n\nTechnician appointment: ${appointmentDateStr} at ${slot}.`,
+          `Your booking #${repairId.replace('REP-2026-', '')} for ${brand} ${model} has been saved to MySQL.\n\nTechnician appointment: ${selectedDayObj.label} (${selectedDayObj.date}).`,
           [
             { 
               text: 'View My Repairs', 
@@ -262,7 +263,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           ]
         );
       } else {
-        Alert.alert('Notice', res?.message || 'Booking completed.');
+        Alert.alert('Booking Error', res?.message || 'Could not place repair order.');
         navigation.navigate('MyRepairs' as any);
       }
     } catch (err: any) {
@@ -569,59 +570,105 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
             </View>
           )}
 
-          {/* STEP 6: Appointment */}
+          {/* STEP 6: Full-Page Appointment Date Selection (Today to Next 6 Days, No Timing) */}
           {step === 6 && (
-            <View>
-              <Text style={[styles.subHeading, { color: theme.text }]}>Date</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dateScroll}>
-                {appointmentDays.map((d, i) => (
+            <View style={{ gap: 10 }}>
+              <View style={{ marginBottom: 4 }}>
+                <Text style={[styles.subHeading, { color: theme.text, marginBottom: 4, fontSize: 17, fontWeight: '800' }]}>
+                  Choose Your Preferred Day
+                </Text>
+                <Text style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 18 }}>
+                  Our verified engineer will visit your doorstep for free inspection and express repair.
+                </Text>
+              </View>
+
+              {appointmentDays.map((d, i) => {
+                const isSelected = day === i;
+                const isToday = i === 0;
+                const isTomorrow = i === 1;
+
+                return (
                   <TouchableOpacity
                     key={d.date}
                     style={[
-                      styles.dateTile, 
-                      { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                      day === i && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                      {
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 15,
+                        borderRadius: 18,
+                        backgroundColor: isSelected ? theme.primarySoft : theme.surface,
+                        borderWidth: 2,
+                        borderColor: isSelected ? theme.primary : theme.cardBorder,
+                        gap: 12,
+                      }
                     ]}
                     onPress={() => setDay(i)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[
-                      styles.dateDay, 
-                      { color: theme.textSecondary },
-                      day === i && { color: theme.primary }
-                    ]}>{d.label}</Text>
-                    <Text style={[
-                      styles.dateNum, 
-                      { color: theme.text },
-                      day === i && { color: theme.primary }
-                    ]}>{d.date}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+                    {/* Left Icon / Date Badge */}
+                    <View
+                      style={{
+                        width: 50,
+                        height: 50,
+                        borderRadius: 14,
+                        backgroundColor: isSelected ? theme.primary : (isDark ? '#334155' : '#f1f5f9'),
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '800',
+                          textTransform: 'uppercase',
+                          color: isSelected ? '#ffffff' : theme.textSecondary,
+                        }}
+                      >
+                        {d.label.slice(0, 3)}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: '900',
+                          color: isSelected ? '#ffffff' : theme.text,
+                          marginTop: 1,
+                        }}
+                      >
+                        {d.date.split(' ')[0]}
+                      </Text>
+                    </View>
 
-              <Text style={[styles.subHeading, { color: theme.text, marginTop: 24 }]}>Time Slot</Text>
-              <View style={styles.slotGrid}>
-                {timeSlots.map((t) => (
-                  <TouchableOpacity
-                    key={t.time}
-                    style={[
-                      styles.slotTile, 
-                      { backgroundColor: theme.surface, borderColor: theme.cardBorder },
-                      slot === t.time && { borderColor: theme.primary, backgroundColor: theme.primarySoft },
-                      !t.available && { opacity: 0.4 }
-                    ]}
-                    onPress={() => t.available && setSlot(t.time)}
-                    disabled={!t.available}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.slotText, 
-                      { color: theme.text },
-                      slot === t.time && { color: theme.primary }
-                    ]}>{t.time}</Text>
+                    {/* Middle Info */}
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 15,
+                          fontWeight: '800',
+                          color: isSelected ? theme.primary : theme.text,
+                        }}
+                      >
+                        {d.label === "Today" || d.label === "Tomorrow" ? `${d.label} (${d.date})` : `${d.label}, ${d.date}`}
+                      </Text>
+                    </View>
+
+                    {/* Right Checkmark / Radio */}
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: isSelected ? theme.primary : theme.textSecondary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSelected ? theme.primary : 'transparent',
+                      }}
+                    >
+                      {isSelected && <Check size={14} color="#ffffff" strokeWidth={3} />}
+                    </View>
                   </TouchableOpacity>
-                ))}
-              </View>
+                );
+              })}
             </View>
           )}
 
@@ -705,7 +752,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Device</Text><Text style={[styles.kvValue, { color: theme.text }]}>{brand} {model}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedProblems.join(", ") || "Diagnostic Repair"}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Service</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedServiceObj?.service_name ?? "Screen Replacement"}</Text></View>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment</Text><Text style={[styles.kvValue, { color: theme.text }]}>{appointmentDays[day]?.date} 2026, {slot || "11:00 AM"}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment Date</Text><Text style={[styles.kvValue, { color: theme.text }]}>{appointmentDays[day]?.label} ({appointmentDays[day]?.date})</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Method</Text><Text style={[styles.kvValue, { color: theme.text }]}>{method === "pickup" ? "Doorstep Pickup & Delivery" : "Visit Store"}</Text></View>
               </Card>
 
@@ -753,18 +800,34 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
 
         {step < TOTAL_STEPS ? (
           <TouchableOpacity 
-            style={[styles.btn, styles.btnPrimary, !canContinue && styles.btnDisabled]} 
+            style={[
+              styles.btn, 
+              styles.btnPrimary, 
+              { backgroundColor: canContinue ? theme.primary : (isDark ? '#334155' : '#e2e8f0') },
+            ]} 
             onPress={next}
             disabled={!canContinue}
+            activeOpacity={0.8}
           >
-            <Text style={styles.btnPrimaryText}>Continue</Text>
-            <ChevronRight size={20} color="#fff" />
+            <Text style={[
+              styles.btnPrimaryText,
+              !canContinue && { color: isDark ? '#94a3b8' : '#64748b' }
+            ]}>
+              Continue
+            </Text>
+            <ChevronRight size={20} color={canContinue ? '#fff' : (isDark ? '#94a3b8' : '#64748b')} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity 
-            style={[styles.btn, styles.btnPrimary, isSubmitting && styles.btnDisabled]} 
+            style={[
+              styles.btn, 
+              styles.btnPrimary, 
+              { backgroundColor: theme.primary },
+              isSubmitting && { opacity: 0.7 }
+            ]} 
             onPress={handleConfirmBooking}
             disabled={isSubmitting}
+            activeOpacity={0.8}
           >
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -804,6 +867,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 16,
+    overflow: 'hidden',
   },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 14 },
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -815,6 +879,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     gap: 8,
+    overflow: 'hidden',
   },
   tileText: { fontSize: 14, fontWeight: '700' },
   listContainer: { gap: 10 },
@@ -825,6 +890,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1.5,
+    overflow: 'hidden',
   },
   rowTileText: { fontSize: 14, fontWeight: '700' },
   selectedCard: {
@@ -834,6 +900,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 16,
     gap: 12,
+    overflow: 'hidden',
   },
   selectedCardInfo: { flex: 1 },
   selectedCardLabel: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
@@ -871,6 +938,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 6,
+    overflow: 'hidden',
   },
   removePhoto: {
     position: 'absolute',
@@ -883,6 +951,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+    overflow: 'hidden',
   },
   hintText: { fontSize: 12, marginTop: 4 },
   serviceRowTile: {
@@ -893,13 +962,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1.5,
     marginBottom: 10,
+    overflow: 'hidden',
   },
   serviceRowName: { fontSize: 15, fontWeight: '800' },
   serviceRowTag: { fontSize: 12, marginTop: 2 },
   warrantyRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
   serviceWarrantyText: { fontSize: 12 },
   serviceRowPrice: { fontSize: 16, fontWeight: '900' },
-  warningBox: { padding: 12, borderRadius: 12, marginTop: 8 },
+  warningBox: { padding: 12, borderRadius: 12, marginTop: 8, overflow: 'hidden' },
   warningText: { fontSize: 12, fontWeight: '600' },
   dateScroll: { flexDirection: 'row', marginBottom: 8 },
   dateTile: {
@@ -910,6 +980,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     alignItems: 'center',
     minWidth: 70,
+    overflow: 'hidden',
   },
   dateDay: { fontSize: 12, fontWeight: '600' },
   dateNum: { fontSize: 14, fontWeight: '800', marginTop: 2 },
@@ -919,6 +990,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1.5,
+    overflow: 'hidden',
   },
   slotText: { fontSize: 13, fontWeight: '700' },
   methodDesc: { fontSize: 12, marginTop: 2 },
@@ -929,9 +1001,10 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     marginTop: 10,
+    overflow: 'hidden',
   },
   addAddressText: { fontSize: 14, fontWeight: '700' },
-  summaryCard: { padding: 14, borderRadius: 16, marginBottom: 12 },
+  summaryCard: { padding: 14, borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
   kvRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -940,7 +1013,7 @@ const styles = StyleSheet.create({
   },
   kvKey: { fontSize: 13 },
   kvValue: { fontSize: 13, fontWeight: '700' },
-  priceCard: { padding: 16, borderRadius: 16, marginBottom: 12 },
+  priceCard: { padding: 16, borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   priceLabel: { fontSize: 13 },
   priceValue: { fontSize: 13, fontWeight: '700' },
@@ -959,14 +1032,16 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  btnSecondary: { width: 80, borderWidth: 1 },
+  btnSecondary: { width: 80, borderWidth: 1, overflow: 'hidden' },
   btnSecondaryText: { fontSize: 14, fontWeight: '700' },
   btnPrimary: {
     flex: 1,
     backgroundColor: '#0284c7',
     flexDirection: 'row',
     gap: 6,
+    overflow: 'hidden',
   },
   btnPrimaryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   btnDisabled: { opacity: 0.5 },

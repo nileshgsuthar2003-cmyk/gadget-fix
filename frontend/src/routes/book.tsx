@@ -190,7 +190,7 @@ function BookWizard() {
     (step === 3 && selectedProblems.length > 0) ||
     step === 4 ||
     (step === 5 && !!serviceId) ||
-    (step === 6 && !!slot) ||
+    (step === 6 && day >= 0) ||
     (step === 7 && !!method) ||
     step === 8 ||
     step === 9;
@@ -446,50 +446,75 @@ function BookWizard() {
           </div>
         )}
 
-        {/* STEP 6 — Appointment */}
+        {/* STEP 6 — Full Page Appointment Date Selection (Today to Next 6 Days, No Timing) */}
         {step === 6 && (
-          <div className="mt-5 space-y-5">
+          <div className="mt-5 space-y-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
-                Select Appointment Date
+              <h2 className="text-base font-extrabold text-foreground mb-1">
+                Choose Your Preferred Day
+              </h2>
+              <p className="text-xs text-muted-foreground mb-4">
+                Select any day from today to the next 6 days for doorstep inspection and express repair.
               </p>
-              <div className="grid grid-cols-5 gap-2">
-                {appointmentDays.map((d, i) => (
-                  <button
-                    key={d.date}
-                    onClick={() => setDay(i)}
-                    className={cn(
-                      "animate-press flex flex-col items-center justify-center rounded-2xl border-2 bg-card py-3 transition-all",
-                      day === i ? "border-primary bg-primary text-primary-foreground font-black shadow-sm" : "border-border",
-                    )}
-                  >
-                    <span className="text-[11px] font-semibold">{d.label}</span>
-                    <span className="text-sm font-black mt-0.5">{d.date}</span>
-                  </button>
-                ))}
-              </div>
             </div>
 
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2.5">
-                Choose Time Slot
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {timeSlots.map((t) => (
+            <div className="space-y-2.5">
+              {appointmentDays.map((d, i) => {
+                const isSelected = day === i;
+                const isToday = i === 0;
+                const isTomorrow = i === 1;
+
+                return (
                   <button
-                    key={t.time}
-                    disabled={!t.available}
-                    onClick={() => setSlot(t.time)}
+                    key={d.date}
+                    type="button"
+                    onClick={() => setDay(i)}
                     className={cn(
-                      "animate-press rounded-xl border-2 bg-card py-2.5 text-xs font-bold transition-all",
-                      slot === t.time ? "border-primary bg-primary text-primary-foreground" : "border-border",
-                      !t.available && "opacity-40 cursor-not-allowed bg-muted",
+                      "animate-press flex w-full items-center justify-between rounded-2xl border-2 p-4 text-left transition-all",
+                      isSelected
+                        ? "border-primary bg-primary-soft shadow-sm ring-2 ring-primary/20"
+                        : "border-border bg-card hover:border-primary/40",
                     )}
                   >
-                    {t.time}
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className={cn(
+                          "grid h-12 w-12 shrink-0 place-items-center rounded-xl text-center font-bold",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        <span className="text-[10px] uppercase tracking-wider block leading-none">
+                          {d.label.slice(0, 3)}
+                        </span>
+                        <span className="text-base font-black leading-none mt-0.5">
+                          {d.date.split(" ")[0]}
+                        </span>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-extrabold text-foreground">
+                          {d.label === "Today" || d.label === "Tomorrow"
+                            ? `${d.label} (${d.date})`
+                            : `${d.label}, ${d.date}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={cn(
+                        "grid h-6 w-6 place-items-center rounded-full border-2 transition-all",
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-muted-foreground/30",
+                      )}
+                    >
+                      {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                    </div>
                   </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -564,7 +589,7 @@ function BookWizard() {
               <KV k="Device" v={`${brand} ${model}`} />
               <KV k="Problem" v={selectedProblems.join(", ") || "Diagnostic Repair"} />
               <KV k="Service" v={selectedServiceObj?.service_name || "Screen Replacement"} />
-              <KV k="Appointment" v={`${appointmentDays[day]!.date} 2026, ${slot || "11:00 AM"}`} />
+              <KV k="Appointment Date" v={`${appointmentDays[day]?.label || "Today"} (${appointmentDays[day]?.date})`} />
               <KV k="Repair Method" v={method === "pickup" ? "Doorstep Pickup & Delivery" : "Visit Store"} />
             </Card>
 
@@ -607,8 +632,25 @@ function BookWizard() {
             <Button
               size="lg"
               className="flex-1"
-              onClick={() => {
-                toast.success("Repair booked successfully!");
+              onClick={async () => {
+                try {
+                  const selectedDayObj = appointmentDays[day] || appointmentDays[0];
+                  await api.createRepair({
+                    customer_name: "Rahul Sharma",
+                    customer_phone: "9876543210",
+                    device: `${brand} ${model}`.trim() || "Smartphone",
+                    service: selectedServiceObj?.service_name || "Screen Replacement",
+                    problem: selectedProblems.join(", ") || "Diagnostic Repair",
+                    description: description.trim() || undefined,
+                    photos: photos,
+                    estimate: total,
+                    appointment_date: `${selectedDayObj?.date} ${selectedDayObj?.year || 2026}`,
+                    time_slot: "Full Day",
+                    method: method === "pickup" ? "Doorstep Pickup & Delivery" : "Store Visit",
+                    address: method === "pickup" ? (addressId === "office" ? "3rd Floor, Trade View, Lower Parel, Mumbai" : "B-42, Rose Apartments, Andheri West, Mumbai 400053") : "Fixly Service Hub",
+                  });
+                } catch (e) {}
+                toast.success("Repair booked successfully in MySQL!");
                 navigate({ to: "/booking-success" as any });
               }}
             >

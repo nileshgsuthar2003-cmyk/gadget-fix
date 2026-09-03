@@ -291,13 +291,29 @@ export const timeSlots = [
   { time: "4:00 PM", available: true },
 ];
 
-export const appointmentDays = [
-  { label: "Today", date: "23 Aug" },
-  { label: "Tomorrow", date: "24 Aug" },
-  { label: "Mon", date: "25 Aug" },
-  { label: "Tue", date: "26 Aug" },
-  { label: "Wed", date: "27 Aug" },
-];
+export function getUpcomingDays(count = 7) {
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+
+    let label = "";
+    if (i === 0) label = "Today";
+    else if (i === 1) label = "Tomorrow";
+    else {
+      label = d.toLocaleDateString("en-US", { weekday: "short" });
+    }
+
+    const date = d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+    const fullDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    days.push({ label, date, fullDate, year: d.getFullYear() });
+  }
+  return days;
+}
+
+export const appointmentDays = getUpcomingDays(7);
 
 export function inr(amount: number) {
   return "₹" + amount.toLocaleString("en-IN");

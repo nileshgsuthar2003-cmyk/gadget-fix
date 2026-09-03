@@ -245,19 +245,7 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
           </View>
         )}
 
-        {/* Trust Guarantees */}
-        <View style={styles.section}>
-          <Card style={[styles.trustCard, { backgroundColor: theme.surface }]}>
-            <View style={styles.trustRow}>
-              <ShieldCheck size={20} color={theme.primary} />
-              <Text style={[styles.trustText, { color: theme.text }]}>6 Months Warranty on All Spare Parts</Text>
-            </View>
-            <View style={styles.trustRow}>
-              <Zap size={20} color="#d97706" />
-              <Text style={[styles.trustText, { color: theme.text }]}>Doorstep Pickup & Same-Day Delivery</Text>
-            </View>
-          </Card>
-        </View>
+
 
       </ScrollView>
     </SafeAreaView>
@@ -299,6 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     marginBottom: 20,
+    overflow: 'hidden',
   },
   searchIcon: { marginRight: 8 },
   searchPlaceholder: { fontSize: 13 },
@@ -309,6 +298,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,
+    overflow: 'hidden',
   },
   marketIconBox: {
     width: 40,
@@ -346,6 +336,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     marginLeft: 10,
+    overflow: 'hidden',
   },
   iconWrapper: {
     width: 50,
@@ -356,7 +347,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   popularName: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 15 },
-  repairCard: { padding: 16, borderRadius: 18 },
+  repairCard: { padding: 16, borderRadius: 18, overflow: 'hidden' },
   repairHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   repairId: { fontSize: 12, fontWeight: '800' },
   repairingBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
@@ -367,9 +358,6 @@ const styles = StyleSheet.create({
   progressValue: { fontSize: 12, fontWeight: '700' },
   progressBarBg: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 14 },
   progressBarFill: { height: '100%', borderRadius: 3 },
-  trackButton: { paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
+  trackButton: { paddingVertical: 10, borderRadius: 12, alignItems: 'center', overflow: 'hidden' },
   trackButtonText: { fontSize: 13, fontWeight: '800' },
-  trustCard: { padding: 16, borderRadius: 18, gap: 10 },
-  trustRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  trustText: { fontSize: 12, fontWeight: '700' },
 });
