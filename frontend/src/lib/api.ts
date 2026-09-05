@@ -372,6 +372,23 @@ export const api = {
     return apiRequest<{ success: boolean; phones: any[] }>("/admin/used-phones");
   },
 
+  async getUsedPhoneBrands() {
+    return apiRequest<{ success: boolean; brands: any[] }>("/used-phone-brands");
+  },
+
+  async createUsedPhoneBrand(name: string) {
+    return apiRequest<{ success: boolean; message: string; brand?: any; error?: string }>("/admin/used-phone-brands", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+  },
+
+  async deleteUsedPhoneBrand(id: number) {
+    return apiRequest<{ success: boolean; message: string; error?: string }>(`/admin/used-phone-brands/${id}`, {
+      method: "DELETE",
+    });
+  },
+
   async createUsedPhone(data: any) {
     return apiRequest<{ success: boolean; message: string; phone?: any; error?: string }>("/admin/used-phones", {
       method: "POST",

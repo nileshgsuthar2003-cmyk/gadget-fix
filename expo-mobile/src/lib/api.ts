@@ -673,7 +673,7 @@ export interface ApiUsedPhone {
   price: number;
   warranty: string;
   description?: string;
-  image_url?: string;
+  images?: string[];
   is_active: boolean;
   buy_requests_count?: number;
   created_at?: string;

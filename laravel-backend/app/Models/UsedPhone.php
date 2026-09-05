@@ -20,15 +20,16 @@ class UsedPhone extends Model
         'price',
         'warranty',
         'description',
-        'image_url',
+        'images',
         'is_active',
     ];
 
     protected $casts = [
-        'original_price' => 'float',
-        'price' => 'float',
         'battery_health' => 'integer',
+        'original_price' => 'decimal:2',
+        'price' => 'decimal:2',
         'is_active' => 'boolean',
+        'images' => 'array',
     ];
 
     public function buyRequests()

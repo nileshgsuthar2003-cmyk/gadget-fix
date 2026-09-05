@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Plus, Edit2, Trash2, Smartphone, Check, X, ShieldCheck, BatteryCharging, 
-  Tag, Loader2, Package, Search 
+  Tag, Loader2, Package, Search, Image as ImageIcon, UploadCloud
 } from "lucide-react";
 import { Card, StatusBadge } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -20,13 +20,16 @@ interface UsedPhone {
   price: number;
   warranty: string;
   description?: string;
-  image_url?: string;
+  images?: string[];
   is_active: boolean;
   buy_requests_count?: number;
 }
 
 export function UsedPhonesTab() {
   const [phones, setPhones] = useState<UsedPhone[]>([]);
+  const [brands, setBrands] = useState<any[]>([]);
+  const [newBrandName, setNewBrandName] = useState("");
+  const [isAddingBrand, setIsAddingBrand] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -46,16 +49,24 @@ export function UsedPhonesTab() {
   const [price, setPrice] = useState("");
   const [warranty, setWarranty] = useState("6 Months Fixly Warranty");
   const [description, setDescription] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const fetchPhones = async () => {
     try {
       setLoading(true);
-      const res = await api.getAdminUsedPhones();
+      const [res, brandsRes] = await Promise.all([
+        api.getAdminUsedPhones(),
+        api.getUsedPhoneBrands()
+      ]);
       if (res.success && res.phones) {
         setPhones(res.phones);
       }
+      if (brandsRes.success && brandsRes.brands) {
+        setBrands(brandsRes.brands);
+      }
     } catch (err) {
-      toast.error("Failed to load used phones.");
+      toast.error("Failed to load data.");
     } finally {
       setLoading(false);
     }
@@ -76,6 +87,7 @@ export function UsedPhonesTab() {
     setPrice("");
     setWarranty("6 Months Fixly Warranty");
     setDescription("");
+    setImages([]);
     setEditingPhone(null);
   };
 
@@ -96,7 +108,78 @@ export function UsedPhonesTab() {
     setPrice(String(phone.price));
     setWarranty(phone.warranty);
     setDescription(phone.description || "");
+    setImages(phone.images || []);
     setIsModalOpen(true);
+  };
+
+  const handleAddBrand = async () => {
+    if (!newBrandName.trim()) return;
+    setIsAddingBrand(true);
+    try {
+      const res = await api.createUsedPhoneBrand(newBrandName.trim());
+      if (res.success && res.brand) {
+        setBrands(prev => [...prev, res.brand].sort((a, b) => a.name.localeCompare(b.name)));
+        setNewBrandName("");
+        toast.success("Brand added to catalog.");
+      } else {
+        toast.error(res.error || "Failed to add brand.");
+      }
+    } catch (err) {
+      toast.error("Error adding brand.");
+    } finally {
+      setIsAddingBrand(false);
+    }
+  };
+
+  const handleDeleteBrand = async (id: number, name: string) => {
+    if (!confirm(`Delete brand ${name}?`)) return;
+    try {
+      const res = await api.deleteUsedPhoneBrand(id);
+      if (res.success) {
+        setBrands(prev => prev.filter(b => b.id !== id));
+        toast.success("Brand deleted.");
+      } else {
+        toast.error("Failed to delete brand.");
+      }
+    } catch (err) {
+      toast.error("Error deleting brand.");
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const availableSlots = 6 - images.length;
+    if (availableSlots <= 0) {
+      toast.error("You can only upload up to 6 images.");
+      return;
+    }
+    
+    const filesToUpload = Array.from(files).slice(0, availableSlots);
+    setIsUploadingImages(true);
+    
+    try {
+      const newImages = [...images];
+      for (const file of filesToUpload) {
+        const res = await api.uploadImage(file);
+        if (res.success && res.url) {
+          newImages.push(res.url);
+        } else {
+          toast.error(`Failed to upload ${file.name}`);
+        }
+      }
+      setImages(newImages);
+      toast.success("Images uploaded successfully.");
+    } catch (err) {
+      toast.error("Error uploading images.");
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -117,6 +200,7 @@ export function UsedPhonesTab() {
       price: parseFloat(price),
       warranty: warranty.trim(),
       description: description.trim() || undefined,
+      images,
     };
 
     setIsSaving(true);
@@ -213,6 +297,41 @@ export function UsedPhonesTab() {
         </div>
       </div>
 
+      {/* Brand Management Section */}
+      <Card className="p-5">
+        <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+          Manage Phone Brands Catalog
+        </h3>
+        <div className="flex flex-wrap gap-2 items-center mb-4">
+          {brands.map(b => (
+            <div key={b.id} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-slate-200">
+              {b.name}
+              <button onClick={() => handleDeleteBrand(b.id, b.name)} className="text-slate-400 hover:text-red-500 transition-colors ml-1">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {brands.length === 0 && <span className="text-sm text-slate-500 italic">No brands added yet.</span>}
+        </div>
+        <div className="flex items-center gap-2 max-w-sm">
+          <input
+            type="text"
+            placeholder="New Brand Name..."
+            value={newBrandName}
+            onChange={(e) => setNewBrandName(e.target.value)}
+            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+          />
+          <button
+            onClick={handleAddBrand}
+            disabled={!newBrandName.trim() || isAddingBrand}
+            className="px-4 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 transition-colors"
+          >
+            {isAddingBrand ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add
+          </button>
+        </div>
+      </Card>
+
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
@@ -235,9 +354,19 @@ export function UsedPhonesTab() {
               <div className="p-5 flex-1">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                      <Smartphone className="h-6 w-6 text-blue-600" />
-                    </div>
+                    {phone.images && phone.images.length > 0 ? (
+                      <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                        <img 
+                          src={phone.images[0].startsWith('http') ? phone.images[0] : `http://127.0.0.1:8000${phone.images[0]}`} 
+                          alt={phone.model} 
+                          className="h-full w-full object-cover" 
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+                        <Smartphone className="h-6 w-6 text-blue-600" />
+                      </div>
+                    )}
                     <div>
                       <h3 className="font-bold text-slate-900 line-clamp-1">{phone.brand} {phone.model}</h3>
                       <p className="text-xs text-slate-500 mt-0.5">{phone.storage} • {phone.color}</p>
@@ -328,14 +457,17 @@ export function UsedPhonesTab() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Brand *</label>
-                    <input
+                    <select
                       required
-                      type="text"
-                      placeholder="e.g. Apple"
                       value={brand}
                       onChange={(e) => setBrand(e.target.value)}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
-                    />
+                    >
+                      <option value="">Select a Brand</option>
+                      {brands.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Model *</label>
@@ -358,6 +490,7 @@ export function UsedPhonesTab() {
                       onChange={(e) => setStorage(e.target.value)}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                     >
+                      <option value="32 GB">32 GB</option>
                       <option value="64 GB">64 GB</option>
                       <option value="128 GB">128 GB</option>
                       <option value="256 GB">256 GB</option>
@@ -438,6 +571,48 @@ export function UsedPhonesTab() {
                     onChange={(e) => setWarranty(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    Images (Max 6)
+                  </label>
+                  
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    {images.map((img, index) => (
+                      <div key={index} className="relative h-20 w-20 rounded-xl overflow-hidden border border-slate-200 group">
+                        <img src={img.startsWith('http') ? img : `http://127.0.0.1:8000${img}`} alt={`Phone ${index + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {images.length < 6 && (
+                      <label className="h-20 w-20 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-600 hover:bg-blue-50 transition-colors cursor-pointer">
+                        {isUploadingImages ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            <UploadCloud className="h-5 w-5" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Upload</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={handleImageUpload}
+                          disabled={isUploadingImages}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
 
                 <div>

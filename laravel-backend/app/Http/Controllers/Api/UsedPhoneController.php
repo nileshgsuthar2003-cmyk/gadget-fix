@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\UsedPhone;
 use App\Models\PhoneBuyRequest;
+use App\Models\UsedPhoneBrand;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -55,11 +56,12 @@ class UsedPhoneController extends Controller
             'color' => 'sometimes|string|max:50',
             'condition' => 'sometimes|in:Superb,Good,Fair',
             'battery_health' => 'sometimes|integer|min:0|max:100',
-            'original_price' => 'required|numeric|min:0',
-            'price' => 'required|numeric|min:0',
+            'original_price' => 'required|numeric|min:0|max:99999999',
+            'price' => 'required|numeric|min:0|max:99999999',
             'warranty' => 'sometimes|string|max:200',
             'description' => 'sometimes|nullable|string',
-            'image_url' => 'sometimes|nullable|string',
+            'images' => 'sometimes|nullable|array|max:6',
+            'images.*' => 'string',
         ]);
 
         if ($validator->fails()) {
@@ -72,7 +74,7 @@ class UsedPhoneController extends Controller
         $phone = UsedPhone::create($request->only([
             'brand', 'model', 'storage', 'color', 'condition',
             'battery_health', 'original_price', 'price', 'warranty',
-            'description', 'image_url',
+            'description', 'images',
         ]));
 
         return response()->json([
@@ -100,7 +102,7 @@ class UsedPhoneController extends Controller
         $phone->update($request->only([
             'brand', 'model', 'storage', 'color', 'condition',
             'battery_health', 'original_price', 'price', 'warranty',
-            'description', 'image_url', 'is_active',
+            'description', 'images', 'is_active',
         ]));
 
         return response()->json([
@@ -236,6 +238,71 @@ class UsedPhoneController extends Controller
             'success' => true,
             'message' => 'Buy request status updated.',
             'request' => $buyRequest->fresh()->load('usedPhone'),
+        ]);
+    }
+
+    // =====================================================
+    //  Brand Catalog for Used Phones
+    // =====================================================
+
+    /**
+     * GET /api/used-phone-brands
+     */
+    public function indexBrands()
+    {
+        $brands = UsedPhoneBrand::orderBy('name', 'asc')->get();
+        return response()->json([
+            'success' => true,
+            'brands' => $brands,
+        ]);
+    }
+
+    /**
+     * POST /api/admin/used-phone-brands
+     */
+    public function storeBrand(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:100|unique:used_phone_brands,name',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error' => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $brand = UsedPhoneBrand::create(['name' => trim($request->input('name'))]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Brand added successfully.',
+            'brand' => $brand,
+        ], 201);
+    }
+
+    /**
+     * DELETE /api/admin/used-phone-brands/{id}
+     */
+    public function destroyBrand($id)
+    {
+        $brand = UsedPhoneBrand::find($id);
+
+        if (!$brand) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Brand not found.',
+            ], 404);
+        }
+
+        // Optional: Check if used phones exist for this brand before deleting?
+        // Let's just delete it since they are saved as string in used_phones table anyway.
+        $brand->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Brand deleted successfully.',
         ]);
     }
 }

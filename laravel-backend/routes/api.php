@@ -102,6 +102,11 @@ Route::post('/admin/used-phones', [UsedPhoneController::class, 'store']);
 Route::put('/admin/used-phones/{id}', [UsedPhoneController::class, 'update']);
 Route::delete('/admin/used-phones/{id}', [UsedPhoneController::class, 'destroy']);
 
+// Used Phone Brands Management
+Route::get('/used-phone-brands', [UsedPhoneController::class, 'indexBrands']);
+Route::post('/admin/used-phone-brands', [UsedPhoneController::class, 'storeBrand']);
+Route::delete('/admin/used-phone-brands/{id}', [UsedPhoneController::class, 'destroyBrand']);
+
 // Admin Phone Buy Requests
 Route::get('/admin/phone-buy-requests', [UsedPhoneController::class, 'buyRequests']);
 Route::put('/admin/phone-buy-requests/{id}/status', [UsedPhoneController::class, 'updateBuyRequestStatus']);

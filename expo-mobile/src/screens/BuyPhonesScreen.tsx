@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
-  Modal, Alert, ActivityIndicator, RefreshControl
+  Modal, Alert, ActivityIndicator, RefreshControl, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -210,9 +210,16 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
             return (
               <Card key={phone.id} style={styles.productCard}>
                 <View style={styles.productTopRow}>
-                  <View style={[styles.phoneIconBox, { backgroundColor: theme.primarySoft }]}>
-                    <Smartphone size={32} color={theme.primary} />
-                  </View>
+                  {phone.images && phone.images.length > 0 ? (
+                    <Image 
+                      source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `http://127.0.0.1:8000${phone.images[0]}` }} 
+                      style={styles.phoneIconBox} 
+                    />
+                  ) : (
+                    <View style={[styles.phoneIconBox, { backgroundColor: theme.primarySoft }]}>
+                      <Smartphone size={32} color={theme.primary} />
+                    </View>
+                  )}
                   <View style={styles.productMainInfo}>
                     <View style={styles.badgeRow}>
                       <View style={[styles.conditionBadge, { backgroundColor: theme.primarySoft }]}>
@@ -295,7 +302,14 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
               <ScrollView style={{ maxHeight: 400 }}>
                 {/* Item Details */}
                 <View style={[styles.modalItemCard, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-                  <Smartphone size={28} color={theme.primary} />
+                  {selectedPhone.images && selectedPhone.images.length > 0 ? (
+                    <Image 
+                      source={{ uri: selectedPhone.images[0].startsWith('http') ? selectedPhone.images[0] : `http://127.0.0.1:8000${selectedPhone.images[0]}` }} 
+                      style={{ width: 48, height: 48, borderRadius: 12 }} 
+                    />
+                  ) : (
+                    <Smartphone size={28} color={theme.primary} />
+                  )}
                   <View style={{ flex: 1, marginLeft: 12 }}>
                     <Text style={[styles.modalItemTitle, { color: theme.text }]}>{selectedPhone.brand} {selectedPhone.model}</Text>
                     <Text style={[styles.modalItemSpecs, { color: theme.textSecondary }]}>
