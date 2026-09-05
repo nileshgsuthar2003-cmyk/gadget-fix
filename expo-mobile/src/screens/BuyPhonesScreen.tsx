@@ -9,12 +9,14 @@ import {
   Check, X, Truck, CreditCard, Sparkles, Tag 
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { refurbishedPhones, RefurbishedPhone, inr, brands, CUSTOMER_NAME } from '../lib/data';
+import { refurbishedPhones, RefurbishedPhone, inr, brands } from '../lib/data';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'BuyPhones'>) {
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
 
   const [selectedBrand, setSelectedBrand] = useState<string>('All');
   const [selectedCondition, setSelectedCondition] = useState<string>('All');
@@ -23,7 +25,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
   // Checkout Modal State
   const [selectedPhone, setSelectedPhone] = useState<RefurbishedPhone | null>(null);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [address, setAddress] = useState<string>('B-42, Rose Apartments, Andheri West, Mumbai 400053');
+  const [address, setAddress] = useState<string>(user?.addresses?.[0]?.line || '');
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('upi');
 
   const filteredPhones = useMemo(() => {
@@ -243,7 +245,13 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                 <Text style={[styles.modalSectionLabel, { color: theme.text }]}>Delivery Address</Text>
                 <View style={[styles.modalAddressBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
                   <Truck size={18} color={theme.primary} style={{ marginRight: 8, marginTop: 2 }} />
-                  <Text style={[styles.modalAddressText, { color: theme.textSecondary }]}>{address}</Text>
+                  <TextInput
+                    style={[{ flex: 1, fontSize: 13, color: theme.text, padding: 0 }]}
+                    placeholder="Enter delivery address"
+                    placeholderTextColor={theme.textMuted}
+                    value={address}
+                    onChangeText={setAddress}
+                  />
                 </View>
 
                 {/* Payment Method */}

@@ -13,9 +13,11 @@ import Card from '../components/Card';
 import { brands, modelsByBrand, sellBasePrices, inr, appointmentDays, timeSlots } from '../lib/data';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function SellPhoneScreen({ navigation }: RootStackScreenProps<'SellPhone'>) {
   const { theme, isDark } = useTheme();
+  const { user } = useAuth();
 
   // Wizard state: 1 = Brand/Model, 2 = Storage & Condition, 3 = Instant Quote & Pickup
   const [step, setStep] = useState<number>(1);
@@ -34,8 +36,8 @@ export default function SellPhoneScreen({ navigation }: RootStackScreenProps<'Se
   // Pickup state
   const [day, setDay] = useState<number>(1);
   const [slot, setSlot] = useState<string>('11:00 AM');
-  const [upiId, setUpiId] = useState<string>('rahul@okaxis');
-  const [address, setAddress] = useState<string>('B-42, Rose Apartments, Andheri West, Mumbai');
+  const [upiId, setUpiId] = useState<string>('');
+  const [address, setAddress] = useState<string>(user?.addresses?.[0]?.line || '');
 
   const models = useMemo(() => modelsByBrand[brand] ?? [], [brand]);
 
@@ -404,7 +406,13 @@ export default function SellPhoneScreen({ navigation }: RootStackScreenProps<'Se
               <Card style={styles.payoutCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <MapPin size={18} color={theme.primary} style={{ marginRight: 8 }} />
-                  <Text style={[styles.addressText, { color: theme.text }]}>{address}</Text>
+                  <TextInput
+                    style={[{ flex: 1, fontSize: 13, color: theme.text, padding: 0 }]}
+                    placeholder="Enter pickup address"
+                    placeholderTextColor={theme.textMuted}
+                    value={address}
+                    onChangeText={setAddress}
+                  />
                 </View>
               </Card>
 

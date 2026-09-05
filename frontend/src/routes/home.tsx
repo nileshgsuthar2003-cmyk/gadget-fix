@@ -24,7 +24,7 @@ import {
 import { Card, SectionTitle, StatusBadge } from "@/components/ui";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { CustomerNav, Header, Screen } from "@/components/shell";
-import { CUSTOMER_NAME, inr, popularServices as fallbackServices, repairs as fallbackRepairs } from "@/lib/data";
+import { inr } from "@/lib/data";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/home")({
@@ -51,38 +51,25 @@ const iconMap: Record<string, typeof Smartphone> = {
 };
 
 function Home() {
-  const [liveServices, setLiveServices] = useState<any[]>([...fallbackServices]);
-  const [activeRepair, setActiveRepair] = useState<any | null>(null);
+  const [liveServices, setLiveServices] = useState<any[]>([]);
 
   // Auto-fetch fresh live data on page navigation
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        const [servicesRes, repairsRes] = await Promise.all([
-          api.getServices().catch(() => null),
-          api.getMyRepairs().catch(() => null),
-        ]);
-
-        if (servicesRes && servicesRes.success && Array.isArray(servicesRes.services) && servicesRes.services.length > 0) {
+        const servicesRes = await api.getServices().catch(() => null);
+        if (servicesRes && servicesRes.success && Array.isArray(servicesRes.services)) {
           setLiveServices(servicesRes.services);
-        }
-
-        if (repairsRes && repairsRes.success && Array.isArray(repairsRes.repairs)) {
-          const active = repairsRes.repairs.find(
-            (r: any) => r.status !== "Completed" && r.status !== "Cancelled"
-          );
-          setActiveRepair(active || (repairsRes.repairs.length > 0 ? repairsRes.repairs[0] : null));
+        } else {
+          setLiveServices([]);
         }
       } catch (e) {
-        // keep fallbacks
+        setLiveServices([]);
       }
     };
 
     fetchHomeData();
   }, []);
-
-  const current = activeRepair || fallbackRepairs[0];
-  const firstName = CUSTOMER_NAME.split(" ")[0];
 
   return (
     <Screen>

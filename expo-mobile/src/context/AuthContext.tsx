@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, UserProfile, AuthResponse } from '../lib/api';
 
 interface AuthContextType {
@@ -18,19 +18,10 @@ interface AuthContextType {
   updateUser: (updatedUser: Partial<UserProfile>) => void;
 }
 
-const defaultUser: UserProfile = {
-  id: 1,
-  first_name: 'Rahul',
-  last_name: 'Sharma',
-  name: 'Rahul Sharma',
-  email: 'rahul@fixly.com',
-  phone: '+91 98765 43210',
-};
-
 const AuthContext = createContext<AuthContextType>({
-  user: defaultUser,
-  token: 'mock-token',
-  isAuthenticated: true,
+  user: null,
+  token: null,
+  isAuthenticated: false,
   isLoading: false,
   login: async () => ({ success: false }),
   register: async () => ({ success: false }),
@@ -39,9 +30,27 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(defaultUser);
-  const [token, setToken] = useState<string | null>('mock-token');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Initialize from live database session on startup
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const res = await api.getMe();
+        if (res && res.success && res.user) {
+          setUser(res.user);
+          setToken('live-session-token');
+        }
+      } catch (err) {
+        // Not logged in or server offline
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    initAuth();
+  }, []);
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
     setIsLoading(true);

@@ -10,8 +10,8 @@ import {
   ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu, Megaphone 
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { popularServices as fallbackServices, repairs as fallbackRepairs, CUSTOMER_NAME, inr } from '../lib/data';
-import { api, ApiRepair, ApiBanner, API_BASE_URL } from '../lib/api';
+import { inr } from '../lib/data';
+import { api, ApiBanner, API_BASE_URL } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,32 +21,24 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
-  const greetingName = user?.first_name || CUSTOMER_NAME.split(' ')[0];
+  const greetingName = user?.first_name || (user?.name ? user.name.split(' ')[0] : 'there');
 
   const [liveServices, setLiveServices] = useState<any[]>([]);
-  const [liveRepairs, setLiveRepairs] = useState<ApiRepair[]>([]);
   const [liveBanners, setLiveBanners] = useState<ApiBanner[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHomeData = async () => {
     try {
-      const [servicesRes, repairsRes, bannersRes] = await Promise.allSettled([
+      const [servicesRes, bannersRes] = await Promise.allSettled([
         api.getServices(),
-        api.getMyRepairs(),
         api.getBanners(),
       ]);
 
-      if (servicesRes.status === 'fulfilled' && servicesRes.value?.services?.length > 0) {
+      if (servicesRes.status === 'fulfilled' && Array.isArray(servicesRes.value?.services)) {
         setLiveServices(servicesRes.value.services);
       } else {
-        setLiveServices(fallbackServices as any);
-      }
-
-      if (repairsRes.status === 'fulfilled' && Array.isArray(repairsRes.value?.repairs) && repairsRes.value.repairs.length > 0) {
-        setLiveRepairs(repairsRes.value.repairs);
-      } else {
-        setLiveRepairs(fallbackRepairs as any);
+        setLiveServices([]);
       }
 
       if (bannersRes.status === 'fulfilled' && Array.isArray(bannersRes.value?.banners)) {
@@ -55,8 +47,7 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
         setLiveBanners([]);
       }
     } catch (err) {
-      setLiveServices(fallbackServices as any);
-      setLiveRepairs(fallbackRepairs as any);
+      setLiveServices([]);
       setLiveBanners([]);
     } finally {
       setLoadingServices(false);

@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, KV, PriceRow, StatusBadge } from "@/components/ui";
 import { Header, Screen, Timeline } from "@/components/shell";
-import { inr, repairs, statusFlow, trackingSteps } from "@/lib/data";
+import { inr, statusFlow, trackingSteps } from "@/lib/data";
+import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/repairs/$repairId")({
   head: () => ({
@@ -30,22 +32,55 @@ function getTrackingCurrentStep(status: string): number {
 
 function RepairTracking() {
   const { repairId } = Route.useParams();
-  const repair = repairs.find((r) => r.id === repairId);
+  const [repair, setRepair] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function load() {
+      try {
+        const res = await api.getRepair(repairId);
+        if (isMounted && res && (res.repair || (res as any).success)) {
+          setRepair(res.repair || res);
+        }
+      } catch (err) {
+        console.warn("Could not fetch repair:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    load();
+    return () => { isMounted = false; };
+  }, [repairId]);
+
+  if (loading) {
+    return (
+      <Screen>
+        <Header title="Track Repair" back="/repairs" />
+        <div className="flex flex-1 items-center justify-center p-4">
+          <p className="text-sm font-medium text-muted-foreground">Loading repair details from database...</p>
+        </div>
+      </Screen>
+    );
+  }
 
   if (!repair) {
     return (
       <Screen>
         <Header title="Repair Not Found" back="/repairs" />
         <div className="flex flex-1 items-center justify-center p-4">
-          <p className="text-muted-foreground">This repair does not exist.</p>
+          <p className="text-muted-foreground">This repair order was not found in the database.</p>
         </div>
       </Screen>
     );
   }
 
   const currentStep = getTrackingCurrentStep(repair.status);
-  const isPickup = repair.method === "Pickup & Delivery";
+  const isPickup = repair.method === "Pickup & Delivery" || repair.method === "pickup";
   const pickupFee = isPickup ? 99 : 0;
+  const estimateNum = Number(repair.estimate || 0);
+  const apptStr = repair.appointment_date || repair.appointment || "Scheduled";
+  const timeStr = repair.time_slot || repair.time || "";
 
   return (
     <Screen>
@@ -56,7 +91,7 @@ function RepairTracking() {
         <Card className="p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-xs font-bold text-primary">#{repair.id.replace("REP-2026-", "REP")}</p>
+              <p className="text-xs font-bold text-primary">#{String(repair.id).replace("REP-2026-", "REP-")}</p>
               <p className="mt-1 truncate text-[15px] font-bold text-foreground">
                 {repair.device} · {repair.service}
               </p>
@@ -75,9 +110,11 @@ function RepairTracking() {
           <h2 className="mb-3 text-[15px] font-bold text-foreground">Booking Details</h2>
           <Card className="divide-y divide-border px-4 py-1">
             <KV k="Problem" v={repair.problem} />
-            <KV k="Appointment" v={`${repair.appointment}, ${repair.time}`} />
-            <KV k="Repair Method" v={repair.method} />
-            <KV k="Payment Status" v={repair.payment} />
+            {repair.description ? <KV k="Note" v={repair.description} /> : null}
+            {repair.address ? <KV k="Address" v={repair.address} /> : null}
+            <KV k="Appointment" v={timeStr ? `${apptStr}, ${timeStr}` : apptStr} />
+            <KV k="Repair Method" v={repair.method || "Doorstep Pickup & Delivery"} />
+            <KV k="Payment Status" v={repair.payment_status || repair.payment || "Pending"} />
           </Card>
         </div>
 
@@ -87,10 +124,10 @@ function RepairTracking() {
             {repair.status === "Completed" ? "Final Cost" : "Estimated Cost"}
           </h2>
           <Card className="px-4 py-3">
-            <PriceRow label={`Service (${repair.service})`} amount={inr(repair.estimate - pickupFee)} />
+            <PriceRow label={`Service (${repair.service})`} amount={inr(Math.max(0, estimateNum - pickupFee))} />
             {isPickup && <PriceRow label="Pickup Fee" amount={inr(pickupFee)} />}
             <div className="my-2 border-t border-dashed border-border" />
-            <PriceRow label={repair.status === "Completed" ? "Total Paid" : "Estimated Total"} amount={inr(repair.estimate)} strong />
+            <PriceRow label={repair.status === "Completed" ? "Total Paid" : "Estimated Total"} amount={inr(estimateNum)} strong />
           </Card>
           
           {repair.status === "Completed" ? (

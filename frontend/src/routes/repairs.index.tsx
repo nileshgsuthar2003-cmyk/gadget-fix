@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronRight, Smartphone, Loader2, Wrench } from "lucide-react";
 import { Card, StatusBadge } from "@/components/ui";
 import { CustomerNav, Header, Screen } from "@/components/shell";
-import { inr, repairs as fallbackRepairs } from "@/lib/data";
+import { inr } from "@/lib/data";
 import { api } from "@/lib/api";
 
 export const Route = createFileRoute("/repairs/")({
@@ -27,10 +27,10 @@ function RepairsList() {
       if (res && res.success && Array.isArray(res.repairs)) {
         setRepairList(res.repairs);
       } else {
-        setRepairList(fallbackRepairs);
+        setRepairList([]);
       }
     } catch (e) {
-      setRepairList(fallbackRepairs);
+      setRepairList([]);
     } finally {
       setLoading(false);
     }

@@ -29,7 +29,7 @@ import {
   Check,
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { inr, CUSTOMER_NAME } from '../lib/data';
+import { inr } from '../lib/data';
 import { api, ApiRepair, UserAddress } from '../lib/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,10 +47,10 @@ export default function ProfileScreen() {
   
   // Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [firstName, setFirstName] = useState(user?.first_name || 'Rahul');
-  const [lastName, setLastName] = useState(user?.last_name || 'Sharma');
-  const [phone, setPhone] = useState(user?.phone || '9876543210');
-  const [email, setEmail] = useState(user?.email || 'rahul@fixly.com');
+  const [firstName, setFirstName] = useState(user?.first_name || '');
+  const [lastName, setLastName] = useState(user?.last_name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [newPassword, setNewPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -69,12 +69,7 @@ export default function ProfileScreen() {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   const [addresses, setAddresses] = useState<UserAddress[]>(
-    user?.addresses && user.addresses.length > 0
-      ? user.addresses
-      : [
-          { id: 'addr_1', type: 'Home', flat: 'B-42, Rose Apartments', street: 'Andheri West', landmark: 'Near Metro Station', city: 'Mumbai', pincode: '400053', line: 'B-42, Rose Apartments, Andheri West, Mumbai 400053', is_default: true },
-          { id: 'addr_2', type: 'Office', flat: '3rd Floor, Trade View', street: 'Lower Parel', landmark: 'Kamala Mills Compound', city: 'Mumbai', pincode: '400013', line: '3rd Floor, Trade View, Lower Parel, Mumbai 400013', is_default: false },
-        ]
+    Array.isArray(user?.addresses) ? user.addresses : []
   );
 
   // Fetch Live Profile & Live Bookings from MySQL API
@@ -88,13 +83,11 @@ export default function ProfileScreen() {
       if (userRes.status === 'fulfilled' && userRes.value?.success && userRes.value?.user) {
         const u = userRes.value.user;
         updateUser(u);
-        setFirstName(u.first_name || 'Rahul');
-        setLastName(u.last_name || 'Sharma');
-        setPhone(u.phone || '9876543210');
-        setEmail(u.email || 'rahul@fixly.com');
-        if (Array.isArray(u.addresses) && u.addresses.length > 0) {
-          setAddresses(u.addresses);
-        }
+        setFirstName(u.first_name || '');
+        setLastName(u.last_name || '');
+        setPhone(u.phone || '');
+        setEmail(u.email || '');
+        setAddresses(Array.isArray(u.addresses) ? u.addresses : []);
       }
 
       if (repairsRes.status === 'fulfilled' && repairsRes.value?.success && Array.isArray(repairsRes.value?.repairs)) {
@@ -284,15 +277,13 @@ export default function ProfileScreen() {
     );
   };
 
-  const customerFullName = user ? `${user.first_name} ${user.last_name}` : (CUSTOMER_NAME || 'Rahul Sharma');
-  const customerPhone = user?.phone || '+91 98765 43210';
-  const customerEmail = user?.email || 'rahul@fixly.com';
+  const customerFullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User' : 'User';
+  const customerPhone = user?.phone || 'No phone set';
+  const customerEmail = user?.email || 'No email set';
   
   // Calculate Live Dynamic Metrics
-  const repairsCount = liveRepairs.length > 0 ? liveRepairs.length : (user?.repairs_count ?? 2);
-  const totalSpentAmount = liveRepairs.length > 0 
-    ? liveRepairs.reduce((acc, r) => acc + (Number(r.estimate) || 0), 0)
-    : (Number(user?.total_spent) || 4500);
+  const repairsCount = liveRepairs.length;
+  const totalSpentAmount = liveRepairs.reduce((acc, r) => acc + (Number(r.estimate) || 0), 0);
 
   const handleLogout = () => {
     Alert.alert(
@@ -342,10 +333,10 @@ export default function ProfileScreen() {
           <TouchableOpacity 
             style={[styles.editPillBtn, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}
             onPress={() => {
-              setFirstName(user?.first_name || 'Rahul');
-              setLastName(user?.last_name || 'Sharma');
-              setPhone(user?.phone || '9876543210');
-              setEmail(user?.email || 'rahul@fixly.com');
+              setFirstName(user?.first_name || '');
+              setLastName(user?.last_name || '');
+              setPhone(user?.phone || '');
+              setEmail(user?.email || '');
               setIsEditModalOpen(true);
             }}
             activeOpacity={0.7}

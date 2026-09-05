@@ -1,6 +1,5 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { brands as fallbackBrands, modelsByBrand as fallbackModelsByBrand, servicesForDevice as fallbackServices } from './data';
 
 // Auto-detect host IP from Expo bundler (handles Wi-Fi IP changes automatically)
 const expoHostUri =
@@ -83,8 +82,7 @@ export interface ApiModelService {
 }
 
 export interface ApiRepair {
-  id: string;
-  user_id?: number;
+  id: string | number;
   device: string;
   service: string;
   problem: string;
@@ -94,9 +92,15 @@ export interface ApiRepair {
   extra_charges_note?: string;
   additional_charges?: Array<{ title: string; amount: number }>;
   appointment_date?: string;
+  time_slot?: string;
   method?: string;
+  address?: string;
+  description?: string;
   payment_status?: string;
   created_at?: string;
+  appointment?: string;
+  time?: string;
+  payment?: string;
 }
 
 const CANDIDATE_BASE_URLS = Array.from(
@@ -340,54 +344,36 @@ export const api = {
   async getBrands(): Promise<ApiBrand[]> {
     try {
       const res = await request<{ success: boolean; brands: ApiBrand[] }>('/catalog/brands');
-      if (res && res.success && res.brands && res.brands.length > 0) {
+      if (res && res.success && Array.isArray(res.brands)) {
         return res.brands;
       }
-      return fallbackBrands.map((name, i) => ({ id: i + 1, name }));
+      return [];
     } catch (err) {
-      return fallbackBrands.map((name, i) => ({ id: i + 1, name }));
+      return [];
     }
   },
 
-  async getModels(brandId: number, brandName: string): Promise<ApiModel[]> {
+  async getModels(brandId: number, brandName?: string): Promise<ApiModel[]> {
     try {
       const res = await request<{ success: boolean; models: ApiModel[] }>(`/catalog/brands/${brandId}/models`);
-      if (res && res.success && res.models && res.models.length > 0) {
+      if (res && res.success && Array.isArray(res.models)) {
         return res.models;
       }
-      const list = fallbackModelsByBrand[brandName] || [];
-      return list.map((name, i) => ({ id: i + 1, brand_id: brandId, name }));
+      return [];
     } catch (err) {
-      const list = fallbackModelsByBrand[brandName] || [];
-      return list.map((name, i) => ({ id: i + 1, brand_id: brandId, name }));
+      return [];
     }
   },
 
-  async getModelServices(modelId: number, modelName: string): Promise<ApiModelService[]> {
+  async getModelServices(modelId: number, modelName?: string): Promise<ApiModelService[]> {
     try {
       const res = await request<{ success: boolean; services: ApiModelService[] }>(`/catalog/models/${modelId}/services`);
-      if (res && res.success && res.services && res.services.length > 0) {
+      if (res && res.success && Array.isArray(res.services)) {
         return res.services;
       }
-      return fallbackServices.map((s, i) => ({
-        id: i + 1,
-        device_model_id: modelId,
-        service_name: s.name,
-        category: 'Hardware',
-        price: s.price,
-        warranty: '6 Months',
-        part_quality: 'OEM Original',
-      }));
+      return [];
     } catch (err) {
-      return fallbackServices.map((s, i) => ({
-        id: i + 1,
-        device_model_id: modelId,
-        service_name: s.name,
-        category: 'Hardware',
-        price: s.price,
-        warranty: '6 Months',
-        part_quality: 'OEM Original',
-      }));
+      return [];
     }
   },
 
@@ -469,6 +455,20 @@ export const api = {
       return {
         success: true,
         repairs: [],
+      };
+    }
+  },
+
+  async getRepair(id: string | number, token?: string): Promise<{ success: boolean; repair?: ApiRepair; error?: string }> {
+    try {
+      return await request(`/repairs/${id}`, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to fetch repair details.',
       };
     }
   },

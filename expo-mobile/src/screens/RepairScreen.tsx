@@ -7,7 +7,7 @@ import {
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
-import { repairs as fallbackRepairs, statusFlow, trackingSteps, inr } from '../lib/data';
+import { statusFlow, trackingSteps, inr } from '../lib/data';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { api, ApiRepair, API_BASE_URL } from '../lib/api';
@@ -29,23 +29,31 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
   const { theme, isDark } = useTheme();
   const { repairId } = route.params || {};
 
-  const [liveRepair, setLiveRepair] = useState<any>(
-    fallbackRepairs.find((r) => r.id === repairId) || fallbackRepairs[0]
-  );
+  const [liveRepair, setLiveRepair] = useState<ApiRepair | null>(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchLiveRepair = useCallback(async () => {
     try {
-      const res = await api.getMyRepairs();
-      if (res && res.success && Array.isArray(res.repairs)) {
-        const found = res.repairs.find((r: any) => String(r.id) === String(repairId));
-        if (found) {
-          setLiveRepair(found);
+      setLoading(true);
+      const res = await api.getRepair(repairId);
+      if (res && res.success && res.repair) {
+        setLiveRepair(res.repair);
+      } else {
+        const listRes = await api.getMyRepairs();
+        if (listRes && listRes.success && Array.isArray(listRes.repairs)) {
+          const found = listRes.repairs.find((r: any) => String(r.id) === String(repairId));
+          if (found) {
+            setLiveRepair(found);
+          } else {
+            setLiveRepair(null);
+          }
         }
       }
     } catch (e) {
       console.warn('Could not refresh repair details');
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
   }, [repairId]);
@@ -61,7 +69,24 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
     fetchLiveRepair();
   }, [fetchLiveRepair]);
 
-  const repair = liveRepair || fallbackRepairs[0];
+  const repair = liveRepair;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+        <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.cardBorder }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <ChevronLeft size={24} color={theme.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Track Repair</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.centerContainer}>
+          <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>Loading repair details from database...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!repair) {
     return (
@@ -71,9 +96,10 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
             <ChevronLeft size={24} color={theme.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Repair Not Found</Text>
+          <View style={{ width: 24 }} />
         </View>
         <View style={styles.centerContainer}>
-          <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>This repair does not exist.</Text>
+          <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>This repair order was not found in the database.</Text>
         </View>
       </SafeAreaView>
     );
@@ -115,7 +141,7 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
               <Text style={[styles.repairIdText, { color: theme.textSecondary }]}>Booking #{repair.id}</Text>
               <Text style={[styles.deviceText, { color: theme.text }]}>{repair.device}</Text>
             </View>
-            <StatusBadge status={repair.status} />
+            <StatusBadge status={repair.status as any} />
           </View>
           <Text style={[styles.serviceText, { color: theme.textSecondary }]}>{repair.service}</Text>
         </Card>
@@ -163,25 +189,27 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.problem}</Text>
             </View>
-            {liveRepair.description ? (
+            {repair.description ? (
               <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
                 <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Note</Text>
-                <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.description}</Text>
+                <Text style={[styles.kvValue, { color: theme.text }]}>{repair.description}</Text>
               </View>
             ) : null}
-            {liveRepair.address ? (
+            {repair.address ? (
               <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
                 <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Address</Text>
-                <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.address}</Text>
+                <Text style={[styles.kvValue, { color: theme.text }]}>{repair.address}</Text>
               </View>
             ) : null}
             <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment</Text>
-              <Text style={[styles.kvValue, { color: theme.text }]}>{repair.appointment}, {repair.time}</Text>
+              <Text style={[styles.kvValue, { color: theme.text }]}>{repair.appointment_date || repair.appointment || 'Scheduled'}{repair.time_slot ? `, ${repair.time_slot}` : (repair.time ? `, ${repair.time}` : '')}</Text>
             </View>
             <View style={[styles.kvRow, { borderBottomWidth: 0 }]}>
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Payment</Text>
-              <Text style={[styles.kvValue, { color: repair.payment === 'Paid' ? '#16a34a' : '#d97706' }]}>{repair.payment}</Text>
+              <Text style={[styles.kvValue, { color: (repair.payment_status || repair.payment) === 'Paid' ? '#16a34a' : '#d97706' }]}>
+                {repair.payment_status || repair.payment || 'Pending'}
+              </Text>
             </View>
           </Card>
         </View>

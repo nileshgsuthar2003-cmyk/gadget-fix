@@ -20,11 +20,8 @@ import { Button, Card, Field, IconTile, Input, KV, PriceRow, Textarea } from "@/
 import { Header, Screen, StepProgress } from "@/components/shell";
 import {
   appointmentDays,
-  brands as fallbackBrands,
   inr,
-  modelsByBrand as fallbackModelsByBrand,
   problems,
-  servicesForDevice as fallbackServices,
   timeSlots,
 } from "@/lib/data";
 import { api } from "@/lib/api";
@@ -61,6 +58,10 @@ function BookWizard() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
+  // Dynamic User & Addresses State
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userAddresses, setUserAddresses] = useState<any[]>([]);
+
   // Dynamic Catalog State
   const [brandsList, setBrandsList] = useState<any[]>([]);
   const [selectedBrandObj, setSelectedBrandObj] = useState<any>(null);
@@ -86,9 +87,32 @@ function BookWizard() {
   const [day, setDay] = useState(2);
   const [slot, setSlot] = useState<string>("11:00 AM");
   const [method, setMethod] = useState<"store" | "pickup" | "">("pickup");
-  const [addressId, setAddressId] = useState<string>("home");
+  const [addressId, setAddressId] = useState<string>("");
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [newAddrLine, setNewAddrLine] = useState("");
+  const [newAddrType, setNewAddrType] = useState("Home");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // 0. Fetch Current User & Addresses
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const res = await api.getMe();
+        if (res && res.success && res.user) {
+          setCurrentUser(res.user);
+          if (Array.isArray(res.user.addresses)) {
+            setUserAddresses(res.user.addresses);
+            if (res.user.addresses.length > 0) {
+              setAddressId(String(res.user.addresses[0].id));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load user for booking:", e);
+      }
+    }
+    loadUser();
+  }, []);
 
   // 1. Fetch Dynamic Brands from MySQL
   useEffect(() => {
@@ -96,13 +120,13 @@ function BookWizard() {
       try {
         setLoadingBrands(true);
         const res = await api.getBrands();
-        if (res && res.brands && res.brands.length > 0) {
+        if (res && res.brands && Array.isArray(res.brands)) {
           setBrandsList(res.brands);
         } else {
-          setBrandsList(fallbackBrands.map((name, i) => ({ id: i + 1, name })));
+          setBrandsList([]);
         }
       } catch (err) {
-        setBrandsList(fallbackBrands.map((name, i) => ({ id: i + 1, name })));
+        setBrandsList([]);
       } finally {
         setLoadingBrands(false);
       }
@@ -117,15 +141,13 @@ function BookWizard() {
         try {
           setLoadingModels(true);
           const res = await api.getModels(selectedBrandObj.id);
-          if (res && res.models && res.models.length > 0) {
+          if (res && res.models && Array.isArray(res.models)) {
             setModelsList(res.models);
           } else {
-            const list = fallbackModelsByBrand[selectedBrandObj.name] || [];
-            setModelsList(list.map((name, i) => ({ id: i + 1, name })));
+            setModelsList([]);
           }
         } catch (e) {
-          const list = fallbackModelsByBrand[selectedBrandObj.name] || [];
-          setModelsList(list.map((name, i) => ({ id: i + 1, name })));
+          setModelsList([]);
         } finally {
           setLoadingModels(false);
         }
@@ -141,31 +163,19 @@ function BookWizard() {
         try {
           setLoadingServices(true);
           const res = await api.getModelServices(selectedModelObj.id);
-          if (res && res.services && res.services.length > 0) {
+          if (res && res.services && Array.isArray(res.services) && res.services.length > 0) {
             setServicesList(res.services);
             setSelectedServiceObj(res.services[0]);
             setServiceId(String(res.services[0].id));
           } else {
-            setServicesList(fallbackServices.map((s, i) => ({
-              id: i + 1,
-              service_name: s.name,
-              price: s.price,
-              warranty: "6 Months",
-              part_quality: "OEM Original",
-            })));
-            if (fallbackServices.length > 0 && fallbackServices[0]) {
-              setSelectedServiceObj(fallbackServices[0]);
-              setServiceId(String(fallbackServices[0].id));
-            }
+            setServicesList([]);
+            setSelectedServiceObj(null);
+            setServiceId("");
           }
         } catch (e) {
-          setServicesList(fallbackServices.map((s, i) => ({
-            id: i + 1,
-            service_name: s.name,
-            price: s.price,
-            warranty: "6 Months",
-            part_quality: "OEM Original",
-          })));
+          setServicesList([]);
+          setSelectedServiceObj(null);
+          setServiceId("");
         } finally {
           setLoadingServices(false);
         }
@@ -548,37 +558,119 @@ function BookWizard() {
         {/* STEP 8 — Pickup Address */}
         {step === 8 && (
           <div className="mt-5 space-y-3">
-            {[
-              { id: "home", icon: HomeIcon, label: "Home", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053" },
-              { id: "office", icon: Building2, label: "Office", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013" },
-            ].map((a) => (
-              <button
-                key={a.id}
-                onClick={() => {
-                  setAddressId(a.id);
-                  setShowAddressForm(false);
-                }}
-                className={cn(
-                  "animate-press flex w-full items-start gap-3.5 rounded-2xl border-2 bg-card p-4 text-left",
-                  addressId === a.id && !showAddressForm ? "border-primary bg-primary-soft" : "border-border",
-                )}
-              >
-                <IconTile icon={<a.icon className="h-5 w-5" />} selected={addressId === a.id && !showAddressForm} />
-                <div className="flex-1 space-y-0.5">
-                  <p className="text-sm font-bold text-foreground">{a.label}</p>
-                  <p className="text-xs text-muted-foreground">{a.line}</p>
-                </div>
-                {addressId === a.id && !showAddressForm && <Check className="h-4 w-4 text-primary shrink-0" />}
-              </button>
-            ))}
+            {userAddresses.length === 0 && !showAddressForm ? (
+              <div className="p-6 text-center border border-border rounded-2xl bg-card space-y-2">
+                <MapPin className="h-8 w-8 mx-auto text-muted-foreground/60" />
+                <p className="text-sm font-bold text-foreground">No Saved Addresses</p>
+                <p className="text-xs text-muted-foreground">Please add a doorstep pickup address to continue.</p>
+              </div>
+            ) : (
+              userAddresses.map((a) => {
+                const Icon = a.type === "Home" ? HomeIcon : Building2;
+                const isSelected = String(addressId) === String(a.id);
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => {
+                      setAddressId(String(a.id));
+                      setShowAddressForm(false);
+                    }}
+                    className={cn(
+                      "animate-press flex w-full items-start gap-3.5 rounded-2xl border-2 bg-card p-4 text-left",
+                      isSelected && !showAddressForm ? "border-primary bg-primary-soft" : "border-border",
+                    )}
+                  >
+                    <IconTile icon={<Icon className="h-5 w-5" />} selected={isSelected && !showAddressForm} />
+                    <div className="flex-1 space-y-0.5">
+                      <p className="text-sm font-bold text-foreground">{a.type}</p>
+                      <p className="text-xs text-muted-foreground">{a.line || a.flat || a.street}</p>
+                    </div>
+                    {isSelected && !showAddressForm && <Check className="h-4 w-4 text-primary shrink-0" />}
+                  </button>
+                );
+              })
+            )}
 
-            <button
-              type="button"
-              onClick={() => setShowAddressForm(!showAddressForm)}
-              className="animate-press flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 text-sm font-bold text-primary"
-            >
-              + Add New Address
-            </button>
+            {showAddressForm ? (
+              <div className="p-4 rounded-2xl border border-border bg-card space-y-3">
+                <div className="flex gap-2">
+                  {["Home", "Office", "Other"].map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setNewAddrType(t)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold border transition-all ${
+                        newAddrType === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder="Complete flat, street, landmark, city, pincode..."
+                  value={newAddrLine}
+                  onChange={(e) => setNewAddrLine(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!newAddrLine.trim()) {
+                        toast.error("Please enter address details");
+                        return;
+                      }
+                      try {
+                        const res = await api.saveAddress({
+                          user_id: currentUser?.id || 1,
+                          type: newAddrType,
+                          line: newAddrLine.trim(),
+                          flat: newAddrLine.trim(),
+                          street: newAddrLine.trim(),
+                          city: "Mumbai",
+                          pincode: "400001",
+                        });
+                        if (res && res.success && Array.isArray(res.addresses)) {
+                          setUserAddresses(res.addresses);
+                          setAddressId(String(res.addresses[res.addresses.length - 1].id));
+                        } else {
+                          const newId = String(Date.now());
+                          setUserAddresses((prev) => [...prev, { id: newId, type: newAddrType, line: newAddrLine.trim() }]);
+                          setAddressId(newId);
+                        }
+                      } catch (err) {
+                        const newId = String(Date.now());
+                        setUserAddresses((prev) => [...prev, { id: newId, type: newAddrType, line: newAddrLine.trim() }]);
+                        setAddressId(newId);
+                      }
+                      setNewAddrLine("");
+                      setShowAddressForm(false);
+                      toast.success("Address added.");
+                    }}
+                    className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-xs hover:bg-primary/90"
+                  >
+                    Save Address
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressForm(false)}
+                    className="rounded-xl border border-border px-3 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAddressForm(true)}
+                className="animate-press flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 text-sm font-bold text-primary"
+              >
+                + Add New Address
+              </button>
+            )}
           </div>
         )}
 
@@ -635,9 +727,15 @@ function BookWizard() {
               onClick={async () => {
                 try {
                   const selectedDayObj = appointmentDays[day] || appointmentDays[0];
+                  const selectedAddrObj = userAddresses.find(a => String(a.id) === String(addressId)) || userAddresses[0];
+                  const chosenAddr = method === "pickup" 
+                    ? (selectedAddrObj?.line || selectedAddrObj?.flat || "Doorstep Pickup Address") 
+                    : "Fixly Service Hub";
+
                   await api.createRepair({
-                    customer_name: "Rahul Sharma",
-                    customer_phone: "9876543210",
+                    user_id: currentUser?.id,
+                    customer_name: currentUser ? `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.name || "Customer" : "Customer",
+                    customer_phone: currentUser?.phone || "",
                     device: `${brand} ${model}`.trim() || "Smartphone",
                     service: selectedServiceObj?.service_name || "Screen Replacement",
                     problem: selectedProblems.join(", ") || "Diagnostic Repair",
@@ -647,7 +745,7 @@ function BookWizard() {
                     appointment_date: `${selectedDayObj?.date} ${selectedDayObj?.year || 2026}`,
                     time_slot: "Full Day",
                     method: method === "pickup" ? "Doorstep Pickup & Delivery" : "Store Visit",
-                    address: method === "pickup" ? (addressId === "office" ? "3rd Floor, Trade View, Lower Parel, Mumbai" : "B-42, Rose Apartments, Andheri West, Mumbai 400053") : "Fixly Service Hub",
+                    address: chosenAddr,
                   });
                 } catch (e) {}
                 setStep(1);

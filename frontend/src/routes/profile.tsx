@@ -16,7 +16,7 @@ import {
   User,
 } from "lucide-react";
 import { CustomerNav, Header, Screen } from "@/components/shell";
-import { inr, CUSTOMER_NAME } from "@/lib/data";
+import { inr } from "@/lib/data";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -33,46 +33,48 @@ export const Route = createFileRoute("/profile")({
 function ProfilePage() {
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<any>({
-    id: 1,
-    first_name: "Rahul",
-    last_name: "Sharma",
-    name: "Rahul Sharma",
-    phone: "+91 98765 43210",
-    email: "rahul@fixly.com",
-    repairs_count: 1,
-  });
+  const [profile, setProfile] = useState<any>(null);
+  const [repairsCount, setRepairsCount] = useState<number>(0);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
 
   // Edit fields
-  const [firstName, setFirstName] = useState("Rahul");
-  const [lastName, setLastName] = useState("Sharma");
-  const [phone, setPhone] = useState("9876543210");
-  const [email, setEmail] = useState("rahul@fixly.com");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   // Addresses
-  const [addresses, setAddresses] = useState([
-    { id: "1", type: "Home", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053" },
-    { id: "2", type: "Office", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013" },
-  ]);
+  const [addresses, setAddresses] = useState<any[]>([]);
   const [newAddrType, setNewAddrType] = useState("Home");
   const [newAddrLine, setNewAddrLine] = useState("");
 
   const loadProfile = async () => {
     try {
-      const res = await api.getMe();
-      if (res && res.success && res.user) {
-        setProfile(res.user);
-        setFirstName(res.user.first_name || "Rahul");
-        setLastName(res.user.last_name || "Sharma");
-        setPhone(res.user.phone || "9876543210");
-        setEmail(res.user.email || "rahul@fixly.com");
+      const [userRes, repairsRes] = await Promise.allSettled([
+        api.getMe(),
+        api.getMyRepairs(),
+      ]);
+
+      if (userRes.status === "fulfilled" && userRes.value?.success && userRes.value?.user) {
+        const u = userRes.value.user;
+        setProfile(u);
+        setFirstName(u.first_name || "");
+        setLastName(u.last_name || "");
+        setPhone(u.phone || "");
+        setEmail(u.email || "");
+        if (Array.isArray(u.addresses)) {
+          setAddresses(u.addresses);
+        }
+      }
+
+      if (repairsRes.status === "fulfilled" && repairsRes.value?.success && Array.isArray(repairsRes.value?.repairs)) {
+        setRepairsCount(repairsRes.value.repairs.length);
       }
     } catch (e) {
-      console.warn("Using local profile.");
+      console.warn("Could not load profile:", e);
     }
   };
 
@@ -90,7 +92,7 @@ function ProfilePage() {
     try {
       setIsSaving(true);
       const res = await api.updateProfile({
-        user_id: profile.id || 1,
+        user_id: profile?.id || 1,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim(),
@@ -111,17 +113,41 @@ function ProfilePage() {
     }
   };
 
-  const handleAddAddress = () => {
+  const handleAddAddress = async () => {
     if (!newAddrLine.trim()) {
       toast.error("Please enter an address");
       return;
     }
-    setAddresses((prev) => [
-      ...prev,
-      { id: String(Date.now()), type: newAddrType, line: newAddrLine.trim() },
-    ]);
-    setNewAddrLine("");
-    toast.success(`${newAddrType} address added.`);
+    try {
+      const res = await api.saveAddress({
+        user_id: profile?.id || 1,
+        type: newAddrType,
+        line: newAddrLine.trim(),
+        flat: newAddrLine.trim(),
+        street: newAddrLine.trim(),
+        city: "Mumbai",
+        pincode: "400001",
+      });
+      if (res && res.success && Array.isArray(res.addresses)) {
+        setAddresses(res.addresses);
+        setNewAddrLine("");
+        toast.success(`${newAddrType} address saved.`);
+      } else {
+        setAddresses((prev) => [
+          ...prev,
+          { id: String(Date.now()), type: newAddrType, line: newAddrLine.trim() },
+        ]);
+        setNewAddrLine("");
+        toast.success(`${newAddrType} address added.`);
+      }
+    } catch (err) {
+      setAddresses((prev) => [
+        ...prev,
+        { id: String(Date.now()), type: newAddrType, line: newAddrLine.trim() },
+      ]);
+      setNewAddrLine("");
+      toast.success(`${newAddrType} address added.`);
+    }
   };
 
   const handleLogout = () => {
@@ -129,7 +155,7 @@ function ProfilePage() {
     navigate({ to: "/login" });
   };
 
-  const fullName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || CUSTOMER_NAME : CUSTOMER_NAME;
+  const fullName = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.name || "Customer" : "Customer";
 
   return (
     <Screen>
@@ -146,7 +172,7 @@ function ProfilePage() {
           <div>
             <h2 className="text-xl font-extrabold text-foreground">{fullName}</h2>
             <p className="text-xs text-muted-foreground mt-1">
-              {profile.phone} • {profile.email}
+              {profile?.phone || "No phone set"} • {profile?.email || "No email set"}
             </p>
           </div>
 
@@ -177,7 +203,7 @@ function ProfilePage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-bold text-foreground">
-                  {profile.repairs_count ?? 1}
+                  {repairsCount}
                 </span>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -330,12 +356,16 @@ function ProfilePage() {
             </div>
 
             <div className="py-3 space-y-2 max-h-48 overflow-y-auto">
-              {addresses.map((a) => (
-                <div key={a.id} className="p-2.5 rounded-xl border border-border bg-muted/20">
-                  <span className="text-[11px] font-bold text-primary">{a.type}</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">{a.line}</p>
-                </div>
-              ))}
+              {addresses.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No saved addresses yet.</p>
+              ) : (
+                addresses.map((a) => (
+                  <div key={a.id} className="p-2.5 rounded-xl border border-border bg-muted/20">
+                    <span className="text-[11px] font-bold text-primary">{a.type}</span>
+                    <p className="text-xs text-muted-foreground mt-0.5">{a.line || a.flat || a.street}</p>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="pt-2 border-t border-border space-y-2">

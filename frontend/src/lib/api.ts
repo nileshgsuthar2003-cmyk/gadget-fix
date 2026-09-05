@@ -81,6 +81,33 @@ export const api = {
     });
   },
 
+  async saveAddress(data: {
+    id?: string;
+    user_id?: number;
+    type: string;
+    flat?: string;
+    street?: string;
+    landmark?: string;
+    city?: string;
+    pincode?: string;
+    line?: string;
+    is_default?: boolean;
+  }) {
+    return apiRequest<{ success: boolean; message: string; addresses: any[]; error?: string }>("/auth/addresses", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteAddress(id: string, userId?: number) {
+    return apiRequest<{ success: boolean; message: string; addresses: any[]; error?: string }>(
+      `/auth/addresses/${id}${userId ? `?user_id=${userId}` : ''}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
   // Dynamic Admin Users Management
   async getAdminUsers(search?: string) {
     return apiRequest<{ success: boolean; users: any[]; stats: any }>(
@@ -282,6 +309,10 @@ export const api = {
   // Customer Repairs
   async getMyRepairs() {
     return apiRequest<{ success: boolean; repairs: any[] }>("/repairs");
+  },
+
+  async getRepair(id: string | number) {
+    return apiRequest<{ success: boolean; repair?: any; message?: string }>(`/repairs/${id}`);
   },
 
   // Promotional Advertisement Banners

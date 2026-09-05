@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Smartphone, ChevronRight, Calendar, Plus, Sparkles } from 'lucide-react-native';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
-import { repairs as fallbackRepairs, CUSTOMER_NAME, inr } from '../lib/data';
+import { inr } from '../lib/data';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -25,13 +25,13 @@ export default function MyRepairsScreen() {
   const fetchRepairs = useCallback(async () => {
     try {
       const res = await api.getMyRepairs();
-      if (res && res.success && Array.isArray(res.repairs) && res.repairs.length > 0) {
+      if (res && res.success && Array.isArray(res.repairs)) {
         setLiveRepairs(res.repairs);
       } else {
-        setLiveRepairs(fallbackRepairs as any);
+        setLiveRepairs([]);
       }
     } catch (e) {
-      setLiveRepairs(fallbackRepairs as any);
+      setLiveRepairs([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -50,9 +50,8 @@ export default function MyRepairsScreen() {
     fetchRepairs();
   }, [fetchRepairs]);
 
-  const allRepairs = liveRepairs.length > 0 ? liveRepairs : (fallbackRepairs as any);
-  const activeRepairs = allRepairs.filter((r: any) => r.status !== "Completed" && r.status !== "Cancelled");
-  const pastRepairs = allRepairs.filter((r: any) => r.status === "Completed" || r.status === "Cancelled");
+  const activeRepairs = liveRepairs.filter((r: any) => r.status !== "Completed" && r.status !== "Cancelled");
+  const pastRepairs = liveRepairs.filter((r: any) => r.status === "Completed" || r.status === "Cancelled");
 
   const renderRepairCard = (r: any, isActive: boolean) => {
     const total = Number(r.estimate || r.cost || 0);

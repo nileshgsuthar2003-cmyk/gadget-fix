@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
@@ -20,7 +20,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CUSTOMER_NAME } from "@/lib/data";
+import { api } from "@/lib/api";
 
 /* ---------- Responsive Screen wrapper ---------- */
 
@@ -39,6 +39,21 @@ export function Screen({ children, className }: { children: ReactNode; className
 /* ---------- Desktop Top Navigation Bar ---------- */
 
 export function DesktopNav() {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    api.getMe().then((res) => {
+      if (isMounted && res && res.success && res.user) {
+        setUser(res.user);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
+
+  const displayName = user ? (user.first_name || (user.name ? user.name.split(" ")[0] : "Account")) : "Profile";
+  const initial = displayName.charAt(0).toUpperCase();
+
   return (
     <header className="sticky top-0 z-40 hidden md:block border-b border-border/80 bg-card/85 backdrop-blur-md transition-all">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
@@ -109,9 +124,9 @@ export function DesktopNav() {
             className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-1.5 hover:bg-accent transition-colors"
           >
             <div className="grid h-7 w-7 place-items-center rounded-lg bg-primary/15 text-xs font-bold text-primary">
-              {CUSTOMER_NAME.charAt(0)}
+              {initial}
             </div>
-            <span className="text-xs font-semibold text-foreground">{CUSTOMER_NAME.split(" ")[0]}</span>
+            <span className="text-xs font-semibold text-foreground">{displayName}</span>
           </Link>
         </div>
       </div>

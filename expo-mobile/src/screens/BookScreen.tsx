@@ -12,7 +12,7 @@ import {
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { 
-  problems, timeSlots, appointmentDays, inr, CUSTOMER_NAME 
+  problems, timeSlots, appointmentDays, inr 
 } from '../lib/data';
 import { api, ApiBrand, ApiModel, ApiModelService, API_BASE_URL } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
@@ -232,12 +232,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     }
   };
 
-  const userSavedAddresses = (user?.addresses && user.addresses.length > 0)
-    ? user.addresses
-    : [
-        { id: "addr_1", type: "Home", flat: "B-42, Rose Apartments", street: "Andheri West", landmark: "Near Metro Station", city: "Mumbai", pincode: "400053", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053", is_default: true },
-        { id: "addr_2", type: "Office", flat: "3rd Floor, Trade View", street: "Lower Parel", landmark: "Kamala Mills Compound", city: "Mumbai", pincode: "400013", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013", is_default: false },
-      ];
+  const userSavedAddresses = Array.isArray(user?.addresses) ? user.addresses : [];
 
   // Submit Booking to MySQL Backend
   const handleConfirmBooking = async () => {
@@ -246,12 +241,12 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     try {
       const selectedDayObj = appointmentDays[day] || appointmentDays[0];
       const appointmentDateStr = `${selectedDayObj.date} ${selectedDayObj.year || 2026}`;
-      const selectedAddress = userSavedAddresses.find(a => a.id === addressId)?.line || userSavedAddresses[0]?.line || 'Doorstep Pickup Address';
+      const selectedAddress = userSavedAddresses.find(a => a.id === addressId)?.line || userSavedAddresses[0]?.line || '';
 
       const res = await api.createRepair({
         user_id: user?.id || 1,
-        customer_name: user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : CUSTOMER_NAME || 'Rahul Sharma'),
-        customer_phone: user?.phone || '9876543210',
+        customer_name: user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : 'Customer'),
+        customer_phone: user?.phone || '',
         device: `${brand} ${model}`.trim() || 'Smartphone',
         service: selectedServiceObj?.service_name || 'Screen Replacement',
         problem: selectedProblems.join(', ') || 'Diagnostic Repair',
@@ -267,7 +262,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
       setIsSubmitting(false);
 
       if (res && (res.success || res.repair)) {
-        const repairId = res.repair?.id || 'REP-2026';
+        const repairId = String(res.repair?.id || 'REP-2026');
         Alert.alert(
           '🎉 Repair Booked Successfully!',
           `Your booking #${repairId.replace('REP-2026-', '')} for ${brand} ${model} has been saved to MySQL.\n\nTechnician appointment: ${selectedDayObj.label} (${selectedDayObj.date}).`,
@@ -726,42 +721,50 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           {/* STEP 8: Address */}
           {step === 8 && (
             <View>
-              {userSavedAddresses.map(a => {
-                const IconComp = a.type === 'Home' ? HomeIcon : (a.type === 'Office' ? Building2 : MapPin);
-                const isSelected = addressId === a.id;
-                const displayLine = a.line || [(a as any).flat, (a as any).street, (a as any).landmark, `${(a as any).city || ''} ${(a as any).pincode || ''}`].filter(Boolean).join(', ');
+              {userSavedAddresses.length === 0 ? (
+                <View style={{ alignItems: 'center', padding: 24, backgroundColor: theme.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.cardBorder, marginBottom: 16 }}>
+                  <MapPin size={32} color={theme.textMuted} style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 }}>No Saved Addresses</Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', marginBottom: 12 }}>Please add a pickup address in your profile to proceed with doorstep pickup.</Text>
+                </View>
+              ) : (
+                userSavedAddresses.map(a => {
+                  const IconComp = a.type === 'Home' ? HomeIcon : (a.type === 'Office' ? Building2 : MapPin);
+                  const isSelected = addressId === a.id;
+                  const displayLine = a.line || [(a as any).flat, (a as any).street, (a as any).landmark, `${(a as any).city || ''} ${(a as any).pincode || ''}`].filter(Boolean).join(', ');
 
-                return (
-                  <TouchableOpacity
-                    key={a.id}
-                    style={[
-                      styles.rowTile, 
-                      { backgroundColor: theme.surface, borderColor: theme.cardBorder, alignItems: 'flex-start' },
-                      isSelected && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                    ]}
-                    onPress={() => setAddressId(a.id)}
-                    activeOpacity={0.7}
-                  >
-                    <IconComp size={20} color={isSelected ? theme.primary : theme.textSecondary} />
-                    <View style={{ flex: 1, marginLeft: 12 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[
-                          styles.rowTileText, 
-                          { color: theme.text, marginLeft: 0 },
-                          isSelected && { color: theme.primary }
-                        ]}>{a.type || (a as any).label}</Text>
-                        {a.is_default && (
-                          <View style={{ backgroundColor: theme.primarySoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                            <Text style={{ fontSize: 9, fontWeight: '800', color: theme.primary, textTransform: 'uppercase' }}>Default</Text>
-                          </View>
-                        )}
+                  return (
+                    <TouchableOpacity
+                      key={a.id}
+                      style={[
+                        styles.rowTile, 
+                        { backgroundColor: theme.surface, borderColor: theme.cardBorder, alignItems: 'flex-start' },
+                        isSelected && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                      ]}
+                      onPress={() => setAddressId(a.id)}
+                      activeOpacity={0.7}
+                    >
+                      <IconComp size={20} color={isSelected ? theme.primary : theme.textSecondary} />
+                      <View style={{ flex: 1, marginLeft: 12 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[
+                            styles.rowTileText, 
+                            { color: theme.text, marginLeft: 0 },
+                            isSelected && { color: theme.primary }
+                          ]}>{a.type || (a as any).label}</Text>
+                          {a.is_default && (
+                            <View style={{ backgroundColor: theme.primarySoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '800', color: theme.primary, textTransform: 'uppercase' }}>Default</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>{displayLine}</Text>
                       </View>
-                      <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>{displayLine}</Text>
-                    </View>
-                    {isSelected && <Check size={18} color={theme.primary} />}
-                  </TouchableOpacity>
-                );
-              })}
+                      {isSelected && <Check size={18} color={theme.primary} />}
+                    </TouchableOpacity>
+                  );
+                })
+              )}
 
               <TouchableOpacity 
                 style={[styles.addAddressBtn, { borderColor: theme.primary }]}
@@ -777,7 +780,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           {step === 9 && (
             <View>
               <Card style={styles.summaryCard}>
-                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Customer</Text><Text style={[styles.kvValue, { color: theme.text }]}>{user?.name || CUSTOMER_NAME || "Rahul Sharma"}</Text></View>
+                <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Customer</Text><Text style={[styles.kvValue, { color: theme.text }]}>{user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : "Customer")}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Device</Text><Text style={[styles.kvValue, { color: theme.text }]}>{brand} {model}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedProblems.join(", ") || "Diagnostic Repair"}</Text></View>
                 <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}><Text style={[styles.kvKey, { color: theme.textSecondary }]}>Service</Text><Text style={[styles.kvValue, { color: theme.text }]}>{selectedServiceObj?.service_name ?? "Screen Replacement"}</Text></View>
