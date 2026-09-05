@@ -177,8 +177,8 @@ class RepairController extends Controller
         $repair = Repair::create([
             'id'               => $repairId,
             'user_id'          => $userId,
-            'customer_name'    => $request->customer_name ?? ($user ? $user->name : 'Rahul Sharma'),
-            'customer_phone'   => $request->customer_phone ?? ($user ? $user->phone : '9876543210'),
+            'customer_name'    => $request->customer_name ?? ($user ? $user->name : 'Customer'),
+            'customer_phone'   => $request->customer_phone ?? ($user ? $user->phone : ''),
             'device'           => $request->device ?? 'Smartphone',
             'service'          => $request->service ?? 'Diagnosis & Repair',
             'problem'          => $problem,

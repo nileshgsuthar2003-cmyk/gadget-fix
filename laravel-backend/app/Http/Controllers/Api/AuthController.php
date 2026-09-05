@@ -501,37 +501,7 @@ class AuthController extends Controller
 
     public function formatUserResponse($user): array
     {
-        $defaultAddresses = [
-            [
-                'id'         => 'addr_1',
-                'type'       => 'Home',
-                'flat'       => 'B-42, Rose Apartments',
-                'street'     => 'Andheri West',
-                'landmark'   => 'Near Metro Station',
-                'city'       => 'Mumbai',
-                'pincode'    => '400053',
-                'line'       => 'B-42, Rose Apartments, Andheri West, Mumbai 400053',
-                'is_default' => true,
-            ],
-            [
-                'id'         => 'addr_2',
-                'type'       => 'Office',
-                'flat'       => '3rd Floor, Trade View',
-                'street'     => 'Lower Parel',
-                'landmark'   => 'Kamala Mills Compound',
-                'city'       => 'Mumbai',
-                'pincode'    => '400013',
-                'line'       => '3rd Floor, Trade View, Lower Parel, Mumbai 400013',
-                'is_default' => false,
-            ],
-        ];
-
-        $addresses = $user->addresses;
-        if ($addresses === null || !is_array($addresses)) {
-            $addresses = $defaultAddresses;
-            $user->addresses = $addresses;
-            $user->save();
-        }
+        $addresses = is_array($user->addresses) ? $user->addresses : [];
 
         $repairsCount = $user->repairs()->count();
         $totalSpent = $user->repairs()->sum('estimate') ?: 0;
