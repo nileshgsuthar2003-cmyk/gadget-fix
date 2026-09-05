@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  ActivityIndicator, RefreshControl 
+  ActivityIndicator, RefreshControl, Image, Dimensions 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
   Smartphone, Battery, Plug, Camera, Speaker, Droplets, Bell, Search,
-  ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu 
+  ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu, Megaphone 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { popularServices as fallbackServices, repairs as fallbackRepairs, CUSTOMER_NAME, inr } from '../lib/data';
-import { api, ApiRepair } from '../lib/api';
+import { api, ApiRepair, ApiBanner, API_BASE_URL } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
   const { theme, isDark } = useTheme();
@@ -23,14 +25,16 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
 
   const [liveServices, setLiveServices] = useState<any[]>([]);
   const [liveRepairs, setLiveRepairs] = useState<ApiRepair[]>([]);
+  const [liveBanners, setLiveBanners] = useState<ApiBanner[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHomeData = async () => {
     try {
-      const [servicesRes, repairsRes] = await Promise.allSettled([
+      const [servicesRes, repairsRes, bannersRes] = await Promise.allSettled([
         api.getServices(),
         api.getMyRepairs(),
+        api.getBanners(),
       ]);
 
       if (servicesRes.status === 'fulfilled' && servicesRes.value?.services?.length > 0) {
@@ -44,9 +48,16 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
       } else {
         setLiveRepairs(fallbackRepairs as any);
       }
+
+      if (bannersRes.status === 'fulfilled' && Array.isArray(bannersRes.value?.banners)) {
+        setLiveBanners(bannersRes.value.banners);
+      } else {
+        setLiveBanners([]);
+      }
     } catch (err) {
       setLiveServices(fallbackServices as any);
       setLiveRepairs(fallbackRepairs as any);
+      setLiveBanners([]);
     } finally {
       setLoadingServices(false);
       setRefreshing(false);
@@ -78,10 +89,6 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
       default: return <Wrench size={26} color={theme.primary} />;
     }
   };
-
-  const currentRepair = (liveRepairs.length > 0 ? liveRepairs : fallbackRepairs).find(
-    r => r.status !== 'Completed' && r.status !== 'Cancelled'
-  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -121,6 +128,83 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
             Search repair services, brands, models...
           </Text>
         </TouchableOpacity>
+
+        {/* Dynamic Advertisement Banners Carousel Under Search Bar */}
+        {liveBanners.length > 0 && (
+          <View style={styles.bannerSection}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bannerScroll}
+              decelerationRate="fast"
+              snapToInterval={SCREEN_WIDTH - 32}
+              snapToAlignment="center"
+            >
+              {liveBanners.map((b) => {
+                const getBannerBg = (grad?: string) => {
+                  switch (grad) {
+                    case 'purple': return isDark ? '#4c1d95' : '#7c3aed';
+                    case 'emerald': return isDark ? '#064e3b' : '#059669';
+                    case 'amber': return isDark ? '#78350f' : '#d97706';
+                    case 'dark': return '#0f172a';
+                    default: return isDark ? '#1e3a8a' : '#2563eb';
+                  }
+                };
+
+                const handleBannerPress = () => {
+                  if (b.link_type === 'sell') {
+                    (navigation as any).navigate('SellPhone');
+                  } else if (b.link_type === 'buy') {
+                    (navigation as any).navigate('BuyPhones');
+                  } else {
+                    navigation.navigate('Book');
+                  }
+                };
+
+                return (
+                  <TouchableOpacity
+                    key={b.id}
+                    style={[styles.bannerCard, { backgroundColor: getBannerBg(b.bg_gradient) }]}
+                    onPress={handleBannerPress}
+                    activeOpacity={0.88}
+                  >
+                    <View style={styles.bannerContent}>
+                      {b.badge_text ? (
+                        <View style={styles.bannerBadge}>
+                          <Text style={styles.bannerBadgeText}>{b.badge_text}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={styles.bannerTitle} numberOfLines={2}>{b.title}</Text>
+                      {b.subtitle ? (
+                        <Text style={styles.bannerSubtitle} numberOfLines={2}>{b.subtitle}</Text>
+                      ) : null}
+                      <View style={styles.bannerCta}>
+                        <Text style={styles.bannerCtaText}>
+                          {b.link_type === 'sell' ? 'Sell Phone' : b.link_type === 'buy' ? 'Shop Phones' : 'Book Repair'}
+                        </Text>
+                        <ArrowRight size={12} color="#0f172a" />
+                      </View>
+                    </View>
+
+                    {b.image_url ? (
+                      <View style={styles.bannerImageBox}>
+                        <Image
+                          source={{ uri: b.image_url.startsWith('http') ? b.image_url : `${API_BASE_URL.replace('/api', '')}${b.image_url}` }}
+                          style={styles.bannerImage}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.bannerIconBox}>
+                        <Sparkles size={28} color="rgba(255,255,255,0.9)" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Buy & Sell Quick Action Cards */}
         <View style={styles.marketplaceSection}>
@@ -209,44 +293,6 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
             </ScrollView>
           )}
         </View>
-
-        {/* My Current Repair */}
-        {currentRepair && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>My Current Repair</Text>
-            <Card style={styles.repairCard}>
-              <View style={styles.repairHeaderRow}>
-                <Text style={[styles.repairId, { color: theme.primary }]}>{currentRepair.id}</Text>
-                <View style={[styles.repairingBadge, { backgroundColor: theme.primarySoft }]}>
-                  <Text style={[styles.repairingBadgeText, { color: theme.primary }]}>{currentRepair.status}</Text>
-                </View>
-              </View>
-              
-              <Text style={[styles.repairDeviceService, { color: theme.text }]}>
-                {currentRepair.device} · {currentRepair.service}
-              </Text>
-
-              <View style={styles.progressRow}>
-                <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>Repair progress</Text>
-                <Text style={[styles.progressValue, { color: theme.text }]}>60%</Text>
-              </View>
-              <View style={[styles.progressBarBg, { backgroundColor: theme.divider }]}>
-                <View style={[styles.progressBarFill, { width: '60%', backgroundColor: theme.primary }]} />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.trackButton, { backgroundColor: theme.primarySoft }]}
-                onPress={() => (navigation as any).navigate('RepairDetails', { repairId: currentRepair.id })}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.trackButtonText, { color: theme.primary }]}>Track Repair</Text>
-              </TouchableOpacity>
-            </Card>
-          </View>
-        )}
-
-
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -347,17 +393,63 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   popularName: { fontSize: 12, fontWeight: '700', textAlign: 'center', lineHeight: 15 },
-  repairCard: { padding: 16, borderRadius: 18, overflow: 'hidden' },
-  repairHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  repairId: { fontSize: 12, fontWeight: '800' },
-  repairingBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  repairingBadgeText: { fontSize: 11, fontWeight: '800' },
-  repairDeviceService: { fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  progressLabel: { fontSize: 12 },
-  progressValue: { fontSize: 12, fontWeight: '700' },
-  progressBarBg: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 14 },
-  progressBarFill: { height: '100%', borderRadius: 3 },
-  trackButton: { paddingVertical: 10, borderRadius: 12, alignItems: 'center', overflow: 'hidden' },
-  trackButtonText: { fontSize: 13, fontWeight: '800' },
+  bannerSection: { marginBottom: 20 },
+  bannerScroll: { paddingRight: 16 },
+  bannerCard: {
+    width: SCREEN_WIDTH - 32,
+    borderRadius: 20,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginRight: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  bannerContent: { flex: 1, paddingRight: 12, zIndex: 2 },
+  bannerBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  bannerBadgeText: { fontSize: 9, fontWeight: '900', color: '#ffffff', textTransform: 'uppercase', letterSpacing: 0.5 },
+  bannerTitle: { fontSize: 15, fontWeight: '900', color: '#ffffff', lineHeight: 19 },
+  bannerSubtitle: { fontSize: 11, color: 'rgba(255, 255, 255, 0.85)', marginTop: 3, lineHeight: 15 },
+  bannerCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 8,
+    marginTop: 8,
+    gap: 4,
+  },
+  bannerCtaText: { fontSize: 11, fontWeight: '800', color: '#0f172a' },
+  bannerImageBox: {
+    width: 68,
+    height: 68,
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    marginLeft: 10,
+  },
+  bannerImage: { width: '100%', height: '100%' },
+  bannerIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
 });

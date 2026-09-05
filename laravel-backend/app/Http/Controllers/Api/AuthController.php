@@ -47,17 +47,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Account registered successfully.',
-            'user'    => [
-                'id'            => $user->id,
-                'first_name'    => $user->first_name,
-                'last_name'     => $user->last_name,
-                'name'          => $user->name,
-                'email'         => $user->email,
-                'phone'         => $user->phone,
-                'role'          => 'customer',
-                'repairs_count' => 0,
-                'total_spent'   => 0,
-            ],
+            'user'    => $this->formatUserResponse($user),
             'token'   => $token,
         ], 201);
     }
@@ -86,23 +76,11 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('fixly-app')->plainTextToken;
-        $repairsCount = $user->repairs()->count();
-        $totalSpent = $user->repairs()->sum('estimate') ?: 0;
 
         return response()->json([
             'success' => true,
             'message' => 'Signed in successfully.',
-            'user'    => [
-                'id'            => $user->id,
-                'first_name'    => $user->first_name,
-                'last_name'     => $user->last_name,
-                'name'          => $user->name,
-                'email'         => $user->email,
-                'phone'         => $user->phone,
-                'role'          => $user->role ?? 'customer',
-                'repairs_count' => $repairsCount,
-                'total_spent'   => $totalSpent,
-            ],
+            'user'    => $this->formatUserResponse($user),
             'token'   => $token,
         ], 200);
     }
@@ -310,17 +288,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'user'    => [
-                'id'            => $user->id,
-                'first_name'    => $user->first_name,
-                'last_name'     => $user->last_name,
-                'name'          => $user->name,
-                'email'         => $user->email,
-                'phone'         => $user->phone,
-                'role'          => $user->role ?? 'customer',
-                'repairs_count' => $repairsCount,
-                'total_spent'   => $totalSpent,
-            ],
+            'user'    => $this->formatUserResponse($user),
         ]);
     }
 
@@ -362,26 +330,224 @@ class AuthController extends Controller
         if ($request->filled('email')) $user->email = trim($request->email);
         if ($request->filled('password')) $user->password = Hash::make($request->password);
 
-        $user->save();
+        if ($request->has('addresses')) {
+            $addrs = $request->input('addresses');
+            if (is_string($addrs)) {
+                $addrs = json_decode($addrs, true);
+            }
+            if (is_array($addrs)) {
+                $user->addresses = array_values($addrs);
+            }
+        }
 
-        $repairsCount = $user->repairs()->count();
-        $totalSpent = $user->repairs()->sum('estimate') ?: 0;
+        $user->save();
 
         return response()->json([
             'success' => true,
             'message' => 'Profile updated successfully.',
-            'user'    => [
-                'id'            => $user->id,
-                'first_name'    => $user->first_name,
-                'last_name'     => $user->last_name,
-                'name'          => $user->name,
-                'email'         => $user->email,
-                'phone'         => $user->phone,
-                'role'          => $user->role ?? 'customer',
-                'repairs_count' => $repairsCount,
-                'total_spent'   => $totalSpent,
-            ],
+            'user'    => $this->formatUserResponse($user),
         ], 200);
+    }
+
+    public function getAddresses(Request $request)
+    {
+        $user = $request->user();
+        if (!$user && $request->has('user_id')) {
+            $user = User::find($request->user_id);
+        }
+        if (!$user) {
+            $user = User::where('role', 'customer')->first() ?? User::first();
+        }
+        if (!$user) {
+            return response()->json(['success' => false, 'addresses' => []], 404);
+        }
+
+        $formatted = $this->formatUserResponse($user);
+        return response()->json([
+            'success'   => true,
+            'addresses' => $formatted['addresses'] ?? [],
+        ]);
+    }
+
+    public function saveAddress(Request $request)
+    {
+        $user = $request->user();
+        if (!$user && $request->has('user_id')) {
+            $user = User::find($request->user_id);
+        }
+        if (!$user) {
+            $user = User::where('role', 'customer')->first() ?? User::first();
+        }
+        if (!$user) {
+            return response()->json(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'type'    => 'required|string|max:50',
+            'flat'    => 'required|string|max:255',
+            'street'  => 'required|string|max:255',
+            'city'    => 'required|string|max:100',
+            'pincode' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error'   => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $currentAddresses = is_array($user->addresses) ? $user->addresses : [];
+        $addrId = $request->input('id') ?: ('addr_' . time() . '_' . rand(100, 999));
+        $isDefault = filter_var($request->input('is_default', false), FILTER_VALIDATE_BOOLEAN);
+
+        $flat = trim($request->input('flat'));
+        $street = trim($request->input('street'));
+        $landmark = trim($request->input('landmark', ''));
+        $city = trim($request->input('city'));
+        $pincode = trim($request->input('pincode'));
+        $type = trim($request->input('type'));
+
+        $landmarkStr = $landmark ? (preg_match('/^(near|opp|opposite|behind|beside|next to|adj|adjacent)\b/i', $landmark) ? $landmark : "Near {$landmark}") : '';
+        $lineParts = array_filter([$flat, $street, $landmarkStr, "{$city} {$pincode}"]);
+        $line = implode(', ', $lineParts);
+
+        $addressData = [
+            'id'         => (string)$addrId,
+            'type'       => $type,
+            'flat'       => $flat,
+            'street'     => $street,
+            'landmark'   => $landmark,
+            'city'       => $city,
+            'pincode'    => $pincode,
+            'line'       => $line,
+            'is_default' => $isDefault,
+        ];
+
+        if ($isDefault) {
+            foreach ($currentAddresses as &$a) {
+                $a['is_default'] = false;
+            }
+            unset($a);
+        }
+
+        $found = false;
+        foreach ($currentAddresses as $idx => $existing) {
+            if (isset($existing['id']) && (string)$existing['id'] === (string)$addrId) {
+                $currentAddresses[$idx] = $addressData;
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            if (empty($currentAddresses)) {
+                $addressData['is_default'] = true;
+            }
+            $currentAddresses[] = $addressData;
+        }
+
+        $user->addresses = array_values($currentAddresses);
+        $user->save();
+
+        return response()->json([
+            'success'   => true,
+            'message'   => $found ? 'Address updated successfully' : 'Address added successfully',
+            'address'   => $addressData,
+            'addresses' => $user->addresses,
+        ], 200);
+    }
+
+    public function deleteAddress(Request $request, $id)
+    {
+        $user = $request->user();
+        if (!$user && $request->has('user_id')) {
+            $user = User::find($request->user_id);
+        }
+        if (!$user) {
+            $user = User::where('role', 'customer')->first() ?? User::first();
+        }
+        if (!$user) {
+            return response()->json(['success' => false, 'error' => 'User not found.'], 404);
+        }
+
+        $currentAddresses = is_array($user->addresses) ? $user->addresses : [];
+        $wasDefault = false;
+
+        $filtered = [];
+        foreach ($currentAddresses as $addr) {
+            if (isset($addr['id']) && (string)$addr['id'] === (string)$id) {
+                if (!empty($addr['is_default'])) {
+                    $wasDefault = true;
+                }
+                continue;
+            }
+            $filtered[] = $addr;
+        }
+
+        if ($wasDefault && count($filtered) > 0) {
+            $filtered[0]['is_default'] = true;
+        }
+
+        $user->addresses = array_values($filtered);
+        $user->save();
+
+        return response()->json([
+            'success'   => true,
+            'message'   => 'Address removed successfully.',
+            'addresses' => $user->addresses,
+        ], 200);
+    }
+
+    public function formatUserResponse($user): array
+    {
+        $defaultAddresses = [
+            [
+                'id'         => 'addr_1',
+                'type'       => 'Home',
+                'flat'       => 'B-42, Rose Apartments',
+                'street'     => 'Andheri West',
+                'landmark'   => 'Near Metro Station',
+                'city'       => 'Mumbai',
+                'pincode'    => '400053',
+                'line'       => 'B-42, Rose Apartments, Andheri West, Mumbai 400053',
+                'is_default' => true,
+            ],
+            [
+                'id'         => 'addr_2',
+                'type'       => 'Office',
+                'flat'       => '3rd Floor, Trade View',
+                'street'     => 'Lower Parel',
+                'landmark'   => 'Kamala Mills Compound',
+                'city'       => 'Mumbai',
+                'pincode'    => '400013',
+                'line'       => '3rd Floor, Trade View, Lower Parel, Mumbai 400013',
+                'is_default' => false,
+            ],
+        ];
+
+        $addresses = $user->addresses;
+        if ($addresses === null || !is_array($addresses)) {
+            $addresses = $defaultAddresses;
+            $user->addresses = $addresses;
+            $user->save();
+        }
+
+        $repairsCount = $user->repairs()->count();
+        $totalSpent = $user->repairs()->sum('estimate') ?: 0;
+
+        return [
+            'id'            => $user->id,
+            'first_name'    => $user->first_name,
+            'last_name'     => $user->last_name,
+            'name'          => $user->name,
+            'email'         => $user->email,
+            'phone'         => $user->phone,
+            'role'          => $user->role ?? 'customer',
+            'repairs_count' => $repairsCount,
+            'total_spent'   => $totalSpent,
+            'addresses'     => $addresses,
+        ];
     }
 
     public function logout(Request $request)

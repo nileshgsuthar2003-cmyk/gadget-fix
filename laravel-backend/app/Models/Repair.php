@@ -24,6 +24,9 @@ class Repair extends Model
         'photos',
         'status',
         'estimate',
+        'extra_charges',
+        'extra_charges_note',
+        'additional_charges',
         'appointment_date',
         'time_slot',
         'method',
@@ -34,6 +37,8 @@ class Repair extends Model
     protected $casts = [
         'photos' => 'array',
         'estimate' => 'float',
+        'extra_charges' => 'float',
+        'additional_charges' => 'array',
     ];
 
     public function user()

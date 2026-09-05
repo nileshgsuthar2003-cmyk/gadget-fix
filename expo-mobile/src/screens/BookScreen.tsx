@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { 
   Search, Smartphone, Check, ImagePlus, Video, X, Store, 
-  Truck, Home as HomeIcon, Building2, ChevronRight, ChevronLeft, ShieldCheck, Camera 
+  Truck, Home as HomeIcon, Building2, MapPin, ChevronRight, ChevronLeft, ShieldCheck, Camera 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { 
@@ -232,10 +232,12 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     }
   };
 
-  const defaultAddresses = [
-    { id: "home", label: "Home", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053" },
-    { id: "office", label: "Office", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013" },
-  ];
+  const userSavedAddresses = (user?.addresses && user.addresses.length > 0)
+    ? user.addresses
+    : [
+        { id: "addr_1", type: "Home", flat: "B-42, Rose Apartments", street: "Andheri West", landmark: "Near Metro Station", city: "Mumbai", pincode: "400053", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053", is_default: true },
+        { id: "addr_2", type: "Office", flat: "3rd Floor, Trade View", street: "Lower Parel", landmark: "Kamala Mills Compound", city: "Mumbai", pincode: "400013", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013", is_default: false },
+      ];
 
   // Submit Booking to MySQL Backend
   const handleConfirmBooking = async () => {
@@ -244,7 +246,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
     try {
       const selectedDayObj = appointmentDays[day] || appointmentDays[0];
       const appointmentDateStr = `${selectedDayObj.date} ${selectedDayObj.year || 2026}`;
-      const selectedAddress = defaultAddresses.find(a => a.id === addressId)?.line || 'Doorstep Pickup Address';
+      const selectedAddress = userSavedAddresses.find(a => a.id === addressId)?.line || userSavedAddresses[0]?.line || 'Doorstep Pickup Address';
 
       const res = await api.createRepair({
         user_id: user?.id || 1,
@@ -724,39 +726,49 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
           {/* STEP 8: Address */}
           {step === 8 && (
             <View>
-              {[
-                { id: "home", icon: HomeIcon, label: "Home", line: "B-42, Rose Apartments, Andheri West, Mumbai 400053" },
-                { id: "office", icon: Building2, label: "Office", line: "3rd Floor, Trade View, Lower Parel, Mumbai 400013" },
-              ].map(a => (
-                <TouchableOpacity
-                  key={a.id}
-                  style={[
-                    styles.rowTile, 
-                    { backgroundColor: theme.surface, borderColor: theme.cardBorder, alignItems: 'flex-start' },
-                    addressId === a.id && !showAddressForm && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                  ]}
-                  onPress={() => { setAddressId(a.id); setShowAddressForm(false); }}
-                  activeOpacity={0.7}
-                >
-                  <a.icon size={20} color={addressId === a.id && !showAddressForm ? theme.primary : theme.textSecondary} />
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[
-                      styles.rowTileText, 
-                      { color: theme.text, marginLeft: 0 },
-                      addressId === a.id && !showAddressForm && { color: theme.primary }
-                    ]}>{a.label}</Text>
-                    <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>{a.line}</Text>
-                  </View>
-                  {addressId === a.id && !showAddressForm && <Check size={18} color={theme.primary} />}
-                </TouchableOpacity>
-              ))}
+              {userSavedAddresses.map(a => {
+                const IconComp = a.type === 'Home' ? HomeIcon : (a.type === 'Office' ? Building2 : MapPin);
+                const isSelected = addressId === a.id;
+                const displayLine = a.line || [(a as any).flat, (a as any).street, (a as any).landmark, `${(a as any).city || ''} ${(a as any).pincode || ''}`].filter(Boolean).join(', ');
+
+                return (
+                  <TouchableOpacity
+                    key={a.id}
+                    style={[
+                      styles.rowTile, 
+                      { backgroundColor: theme.surface, borderColor: theme.cardBorder, alignItems: 'flex-start' },
+                      isSelected && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                    ]}
+                    onPress={() => setAddressId(a.id)}
+                    activeOpacity={0.7}
+                  >
+                    <IconComp size={20} color={isSelected ? theme.primary : theme.textSecondary} />
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[
+                          styles.rowTileText, 
+                          { color: theme.text, marginLeft: 0 },
+                          isSelected && { color: theme.primary }
+                        ]}>{a.type || (a as any).label}</Text>
+                        {a.is_default && (
+                          <View style={{ backgroundColor: theme.primarySoft, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                            <Text style={{ fontSize: 9, fontWeight: '800', color: theme.primary, textTransform: 'uppercase' }}>Default</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={[styles.methodDesc, { color: theme.textSecondary }]}>{displayLine}</Text>
+                    </View>
+                    {isSelected && <Check size={18} color={theme.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
 
               <TouchableOpacity 
                 style={[styles.addAddressBtn, { borderColor: theme.primary }]}
-                onPress={() => setShowAddressForm(!showAddressForm)}
+                onPress={() => (navigation as any).navigate('Profile')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.addAddressText, { color: theme.primary }]}>+ Add New Address</Text>
+                <Text style={[styles.addAddressText, { color: theme.primary }]}>+ Manage Addresses in Profile</Text>
               </TouchableOpacity>
             </View>
           )}

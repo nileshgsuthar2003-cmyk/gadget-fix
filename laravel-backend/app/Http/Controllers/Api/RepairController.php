@@ -32,6 +32,9 @@ class RepairController extends Controller
                 'photos'           => $r->photos ?? [],
                 'status'           => $r->status,
                 'estimate'         => (float)$r->estimate,
+                'extra_charges'    => (float)($r->extra_charges ?? 0),
+                'extra_charges_note' => $r->extra_charges_note,
+                'additional_charges' => $r->additional_charges ?? [],
                 'cost'             => (float)$r->estimate,
                 'appointment'      => $r->appointment_date ? (is_string($r->appointment_date) ? substr($r->appointment_date, 0, 10) : $r->appointment_date->format('Y-m-d')) : date('Y-m-d'),
                 'appointment_date' => $r->appointment_date,
@@ -127,12 +130,25 @@ class RepairController extends Controller
         if ($request->has('payment_status')) {
             $repair->payment_status = $request->payment_status;
         }
+        if ($request->has('estimate')) {
+            $repair->estimate = (float) $request->estimate;
+        }
+        if ($request->has('extra_charges')) {
+            $repair->extra_charges = (float) $request->extra_charges;
+        }
+        if ($request->has('extra_charges_note')) {
+            $repair->extra_charges_note = $request->extra_charges_note;
+        }
+        if ($request->has('additional_charges')) {
+            $charges = $request->additional_charges;
+            $repair->additional_charges = is_string($charges) ? json_decode($charges, true) : $charges;
+        }
         $repair->save();
 
         return response()->json([
             'success' => true,
             'message' => "Repair status updated to {$repair->status}",
-            'repair'  => $repair,
+            'repair'  => $repair->load('user'),
         ], 200);
     }
 

@@ -130,6 +130,9 @@ interface DynamicRepair {
   photos?: string[];
   status: string;
   estimate: number;
+  extra_charges?: number;
+  extra_charges_note?: string;
+  additional_charges?: Array<{ title: string; amount: number }>;
   cost?: number;
   appointment?: string;
   appointment_date?: string;
@@ -303,6 +306,16 @@ function AdminPage() {
   const [bOrder, setBOrder] = useState("1");
   const [bImageUploading, setBImageUploading] = useState(false);
   const [isSavingBanner, setIsSavingBanner] = useState(false);
+
+  // Confirm Repair & Additional Charges Modal
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmingRepair, setConfirmingRepair] = useState<DynamicRepair | null>(null);
+  const [confirmBasePrice, setConfirmBasePrice] = useState<string>("");
+  const [confirmAdditionalItems, setConfirmAdditionalItems] = useState<
+    Array<{ id: string; title: string; amount: string }>
+  >([{ id: "1", title: "", amount: "" }]);
+  const [confirmTargetStatus, setConfirmTargetStatus] = useState<string>("Confirmed");
+  const [isSavingConfirm, setIsSavingConfirm] = useState(false);
 
   // Fetch Brands from Database
   const loadBrands = async () => {
@@ -985,8 +998,131 @@ function AdminPage() {
     toast.info("Logged out of Admin Portal.");
   };
 
-  // Live Status Change
+  // Live Status Change & Additional Charges
+  const handleOpenConfirmModal = (repair: DynamicRepair, targetStatus: string = "Confirmed") => {
+    setConfirmingRepair(repair);
+    const extra = repair.extra_charges || 0;
+    const base = (repair.estimate - extra) > 0 ? (repair.estimate - extra) : repair.estimate;
+    setConfirmBasePrice(String(base));
+    setConfirmTargetStatus(targetStatus);
+
+    // Populate multiple additional charges items
+    if (repair.additional_charges && Array.isArray(repair.additional_charges) && repair.additional_charges.length > 0) {
+      setConfirmAdditionalItems(
+        repair.additional_charges.map((item, index) => ({
+          id: String(index + 1),
+          title: item.title || "",
+          amount: String(item.amount || ""),
+        }))
+      );
+    } else if (extra > 0) {
+      setConfirmAdditionalItems([
+        {
+          id: "1",
+          title: repair.extra_charges_note || "Additional Repair Work",
+          amount: String(extra),
+        },
+      ]);
+    } else {
+      setConfirmAdditionalItems([
+        {
+          id: "1",
+          title: "",
+          amount: "",
+        },
+      ]);
+    }
+
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleAddAdditionalItem = () => {
+    setConfirmAdditionalItems((prev) => [
+      ...prev,
+      { id: String(Date.now()), title: "", amount: "" },
+    ]);
+  };
+
+  const handleRemoveAdditionalItem = (id: string) => {
+    setConfirmAdditionalItems((prev) => {
+      const filtered = prev.filter((item) => item.id !== id);
+      return filtered.length > 0 ? filtered : [{ id: String(Date.now()), title: "", amount: "" }];
+    });
+  };
+
+  const handleUpdateAdditionalItem = (id: string, field: "title" | "amount", value: string) => {
+    setConfirmAdditionalItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+    );
+  };
+
+  const handleSaveOrderConfirmation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmingRepair) return;
+
+    const base = parseFloat(confirmBasePrice) || 0;
+    const validItems = confirmAdditionalItems
+      .filter((item) => (parseFloat(item.amount) || 0) > 0)
+      .map((item, idx) => ({
+        title: item.title.trim() || `Additional Charge #${idx + 1}`,
+        amount: parseFloat(item.amount) || 0,
+      }));
+    const totalExtra = validItems.reduce((sum, item) => sum + item.amount, 0);
+    const total = base + totalExtra;
+    const notesSummary = validItems.map((item) => item.title).join(", ");
+
+    try {
+      setIsSavingConfirm(true);
+      const res = await api.updateRepairStatus(confirmingRepair.id, confirmTargetStatus, {
+        estimate: total,
+        extra_charges: totalExtra,
+        extra_charges_note: notesSummary || undefined,
+        additional_charges: validItems,
+      });
+
+      if (res && res.success) {
+        setRepairList((prev) =>
+          prev.map((r) =>
+            r.id === confirmingRepair.id
+              ? {
+                  ...r,
+                  status: confirmTargetStatus,
+                  estimate: total,
+                  extra_charges: totalExtra,
+                  extra_charges_note: notesSummary,
+                  additional_charges: validItems,
+                }
+              : r
+          )
+        );
+        toast.success(
+          totalExtra > 0
+            ? `Order #${confirmingRepair.id} updated to "${confirmTargetStatus}" with ₹${totalExtra.toLocaleString('en-IN')} additional charges (Total: ₹${total.toLocaleString('en-IN')})!`
+            : `Order #${confirmingRepair.id} updated to "${confirmTargetStatus}" (Total: ₹${total.toLocaleString('en-IN')})!`
+        );
+        setIsConfirmModalOpen(false);
+        setConfirmingRepair(null);
+        loadDashboardData();
+      } else {
+        toast.error(res?.message || "Failed to confirm order.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Error updating order.");
+    } finally {
+      setIsSavingConfirm(false);
+    }
+  };
+
   const handleStatusChange = async (repairId: string, newStatus: string) => {
+    const repair = repairList.find((r) => r.id === repairId);
+    if (!repair) return;
+
+    // When selecting "Confirmed", open the Confirmation & Extra Charges Modal
+    if (newStatus === "Confirmed") {
+      handleOpenConfirmModal(repair, "Confirmed");
+      return;
+    }
+
     setRepairList((prev) =>
       prev.map((r) => (r.id === repairId ? { ...r, status: newStatus } : r))
     );
@@ -2285,13 +2421,46 @@ function AdminPage() {
                             </div>
                           )}
 
-                          <div className="flex justify-between pt-1 border-t border-border/60 font-bold text-foreground">
-                            <span>Estimate:</span>
-                            <span className="text-primary">{inr(r.estimate)}</span>
+                          {/* Estimate & Additional Charges Breakdown */}
+                          <div className="space-y-1 pt-1.5 border-t border-border/60">
+                            {r.extra_charges && r.extra_charges > 0 ? (
+                              <>
+                                <div className="flex justify-between text-[11px] text-muted-foreground">
+                                  <span>Base Service Estimate:</span>
+                                  <span className="font-semibold">{inr((r.estimate || 0) - (r.extra_charges || 0))}</span>
+                                </div>
+                                {r.additional_charges && Array.isArray(r.additional_charges) && r.additional_charges.length > 0 ? (
+                                  <div className="space-y-1 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                                    <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 block tracking-wider">
+                                      Additional Charges Breakdown:
+                                    </span>
+                                    {r.additional_charges.map((item, idx) => (
+                                      <div key={idx} className="flex justify-between text-[11px] text-amber-700 dark:text-amber-300 font-medium">
+                                        <span>• {item.title || `Item #${idx + 1}`}:</span>
+                                        <span className="font-bold">+{inr(item.amount)}</span>
+                                      </div>
+                                    ))}
+                                    <div className="flex justify-between text-[11px] font-black text-amber-700 dark:text-amber-300 pt-1 border-t border-amber-500/20">
+                                      <span>Total Additional Charges:</span>
+                                      <span>+{inr(r.extra_charges)}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-between items-center text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2 py-1 rounded-lg">
+                                    <span>+ Additional Charges {r.extra_charges_note ? `(${r.extra_charges_note})` : ""}:</span>
+                                    <span>+{inr(r.extra_charges)}</span>
+                                  </div>
+                                )}
+                              </>
+                            ) : null}
+                            <div className="flex justify-between font-extrabold text-foreground pt-0.5">
+                              <span>Total Estimate:</span>
+                              <span className="text-primary text-sm font-black">{inr(r.estimate)}</span>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-border/50 gap-2">
+                        <div className="flex flex-wrap items-center justify-between pt-2 border-t border-border/50 gap-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground font-semibold">Change Status:</span>
                             <select
@@ -2310,14 +2479,25 @@ function AdminPage() {
                             </select>
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteRepair(r.id, r.device)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive hover:text-white transition-all shadow-xs shrink-0"
-                            title="Delete repair booking permanently"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span>Delete</span>
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenConfirmModal(r, r.status === "Pending" ? "Confirmed" : r.status)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all shadow-xs"
+                              title="Add Additional Charges or Adjust Estimate"
+                            >
+                              <SlidersHorizontal className="h-3.5 w-3.5" />
+                              <span>{r.extra_charges && r.extra_charges > 0 ? "Edit Additional Charges" : "+ Additional Charges"}</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteRepair(r.id, r.device)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs font-bold hover:bg-destructive hover:text-white transition-all shadow-xs shrink-0"
+                              title="Delete repair booking permanently"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
                         </div>
                       </Card>
                     );
@@ -2441,7 +2621,6 @@ function AdminPage() {
                           <th className="p-4 font-bold">Contact Details</th>
                           <th className="p-4 font-bold">Role</th>
                           <th className="p-4 font-bold">Repairs Booked</th>
-                          <th className="p-4 font-bold">Total Spent</th>
                           <th className="p-4 font-bold">Joined</th>
                           <th className="p-4 font-bold text-right">Actions</th>
                         </tr>
@@ -2492,10 +2671,6 @@ function AdminPage() {
                               <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-bold text-foreground">
                                 {u.repairs_count} Orders
                               </span>
-                            </td>
-
-                            <td className="p-4 font-black text-primary text-sm">
-                              {inr(u.spent)}
                             </td>
 
                             <td className="p-4 text-muted-foreground text-xs">
@@ -3486,6 +3661,231 @@ function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* ---------- 6. CONFIRM ORDER & ADDITIONAL CHARGES MODAL ---------- */}
+      {isConfirmModalOpen && confirmingRepair && (() => {
+        const totalAddition = confirmAdditionalItems.reduce(
+          (sum, item) => sum + (parseFloat(item.amount) || 0),
+          0
+        );
+        const basePriceNum = parseFloat(confirmBasePrice) || 0;
+        const finalCustomerTotal = basePriceNum + totalAddition;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-6 shadow-2xl animate-in zoom-in-95 duration-200 my-8">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <div>
+                  <h3 className="text-base font-extrabold text-foreground flex items-center gap-2">
+                    <SlidersHorizontal className="h-4 w-4 text-primary" /> Confirm Order & Set Additional Charges
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Order #{confirmingRepair.id} · {confirmingRepair.device}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsConfirmModalOpen(false);
+                    setConfirmingRepair(null);
+                  }}
+                  className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* Order Summary Header Card */}
+              <div className="my-4 rounded-2xl bg-muted/40 p-4 border border-border/80 space-y-1.5 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Customer:</span>
+                  <span className="font-bold text-foreground">
+                    {confirmingRepair.user?.name || confirmingRepair.customer_name || "Customer"} ({confirmingRepair.user?.phone || confirmingRepair.customer_phone || "—"})
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Device & Service:</span>
+                  <span className="font-semibold text-foreground">{confirmingRepair.device} — {confirmingRepair.service}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Reported Problem:</span>
+                  <span className="font-semibold text-foreground">{confirmingRepair.problem}</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveOrderConfirmation} className="space-y-4">
+                {/* Base Repair Estimate */}
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">
+                    Base Repair Estimate (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    value={confirmBasePrice}
+                    onChange={(e) => setConfirmBasePrice(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    required
+                  />
+                </div>
+
+                {/* Multiple Additional Charges Section */}
+                <div className="space-y-2 pt-1 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <Plus className="h-3.5 w-3.5" /> Additional Charges (Add Multiple Items)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddAdditionalItem}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
+                    >
+                      <Plus className="h-3 w-3" /> Add Item
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {confirmAdditionalItems.map((item, idx) => (
+                      <div key={item.id} className="flex items-center gap-2 bg-muted/40 p-2 rounded-xl border border-border">
+                        <span className="text-[11px] font-extrabold text-muted-foreground w-4 text-center">
+                          {idx + 1}.
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Reason / Item (e.g. Display IC, Glue seal...)"
+                          value={item.title}
+                          onChange={(e) => handleUpdateAdditionalItem(item.id, "title", e.target.value)}
+                          className="h-9 flex-1 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <div className="relative w-28">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
+                          <input
+                            type="number"
+                            placeholder="Amount"
+                            value={item.amount}
+                            onChange={(e) => handleUpdateAdditionalItem(item.id, "amount", e.target.value)}
+                            className="h-9 w-full rounded-lg border border-amber-500/40 bg-amber-500/5 pl-6 pr-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 text-right"
+                          />
+                        </div>
+                        {confirmAdditionalItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAdditionalItem(item.id)}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            title="Remove item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add Button & Quick Presets */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddAdditionalItem}
+                      className="px-3 py-1.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 text-primary text-xs font-bold hover:bg-primary/10 transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> + Add Another Additional Charge
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground font-semibold">Quick Add:</span>
+                      {[200, 500, 1000, 1500].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => {
+                            setConfirmAdditionalItems((prev) => {
+                              const last = prev[prev.length - 1];
+                              if (last && (!last.amount || last.amount === "0")) {
+                                return prev.map((it, idx) => idx === prev.length - 1 ? { ...it, amount: String(amt) } : it);
+                              }
+                              return [...prev, { id: String(Date.now()), title: "", amount: String(amt) }];
+                            });
+                          }}
+                          className="px-2 py-0.5 rounded-lg border border-border bg-muted/60 text-[10px] font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                        >
+                          +{amt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Status */}
+                <div>
+                  <label className="text-xs font-bold text-foreground block mb-1">Order Status</label>
+                  <select
+                    value={confirmTargetStatus}
+                    onChange={(e) => setConfirmTargetStatus(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="Confirmed">Confirmed (Order Accepted)</option>
+                    <option value="Inspection">Inspection</option>
+                    <option value="Repairing">Repairing</option>
+                    <option value="Quality Check">Quality Check</option>
+                    <option value="Ready">Ready for Delivery / Pickup</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
+                {/* Total Calculation Card */}
+                <div className="rounded-2xl bg-primary/10 border border-primary/20 p-4 space-y-1.5">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Base Price:</span>
+                    <span className="font-semibold">{inr(basePriceNum)}</span>
+                  </div>
+
+                  {confirmAdditionalItems
+                    .filter((item) => (parseFloat(item.amount) || 0) > 0)
+                    .map((item, idx) => (
+                      <div key={item.id} className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        <span>+ {item.title.trim() || `Additional Charge #${idx + 1}`}:</span>
+                        <span className="font-bold">+{inr(parseFloat(item.amount) || 0)}</span>
+                      </div>
+                    ))}
+
+                  {totalAddition > 0 && (
+                    <div className="flex justify-between text-xs text-amber-600 dark:text-amber-400 font-black pt-1 border-t border-amber-500/20">
+                      <span>Total Additional Charges:</span>
+                      <span>+{inr(totalAddition)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm font-black text-foreground pt-1 border-t border-primary/20">
+                    <span>Final Total to Customer:</span>
+                    <span className="text-primary text-base">
+                      {inr(finalCustomerTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConfirmModalOpen(false);
+                      setConfirmingRepair(null);
+                    }}
+                    className="rounded-xl border border-border bg-card px-4 py-2 text-xs font-bold text-muted-foreground hover:bg-muted"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingConfirm}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {isSavingConfirm && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Confirm Order & Save ({inr(finalCustomerTotal)})
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

@@ -25,10 +25,12 @@ import {
   Lock,
   Trash2,
   CheckCircle2,
+  ArrowLeft,
+  Check,
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { inr, CUSTOMER_NAME } from '../lib/data';
-import { api, ApiRepair } from '../lib/api';
+import { api, ApiRepair, UserAddress } from '../lib/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -52,14 +54,28 @@ export default function ProfileScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Address Modal
+  // Address Management States
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [addresses, setAddresses] = useState([
-    { id: '1', type: 'Home', line: 'B-42, Rose Apartments, Andheri West, Mumbai 400053' },
-    { id: '2', type: 'Office', line: '3rd Floor, Trade View, Lower Parel, Mumbai 400013' },
-  ]);
-  const [newAddrType, setNewAddrType] = useState('Home');
-  const [newAddrLine, setNewAddrLine] = useState('');
+  const [addressViewMode, setAddressViewMode] = useState<'list' | 'form'>('list');
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [addrType, setAddrType] = useState<'Home' | 'Office' | 'Other'>('Home');
+  const [addrCustomTag, setAddrCustomTag] = useState('');
+  const [addrFlat, setAddrFlat] = useState('');
+  const [addrStreet, setAddrStreet] = useState('');
+  const [addrLandmark, setAddrLandmark] = useState('');
+  const [addrCity, setAddrCity] = useState('');
+  const [addrPincode, setAddrPincode] = useState('');
+  const [addrIsDefault, setAddrIsDefault] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+
+  const [addresses, setAddresses] = useState<UserAddress[]>(
+    user?.addresses && user.addresses.length > 0
+      ? user.addresses
+      : [
+          { id: 'addr_1', type: 'Home', flat: 'B-42, Rose Apartments', street: 'Andheri West', landmark: 'Near Metro Station', city: 'Mumbai', pincode: '400053', line: 'B-42, Rose Apartments, Andheri West, Mumbai 400053', is_default: true },
+          { id: 'addr_2', type: 'Office', flat: '3rd Floor, Trade View', street: 'Lower Parel', landmark: 'Kamala Mills Compound', city: 'Mumbai', pincode: '400013', line: '3rd Floor, Trade View, Lower Parel, Mumbai 400013', is_default: false },
+        ]
+  );
 
   // Fetch Live Profile & Live Bookings from MySQL API
   const fetchLiveProfile = useCallback(async () => {
@@ -76,6 +92,9 @@ export default function ProfileScreen() {
         setLastName(u.last_name || 'Sharma');
         setPhone(u.phone || '9876543210');
         setEmail(u.email || 'rahul@fixly.com');
+        if (Array.isArray(u.addresses) && u.addresses.length > 0) {
+          setAddresses(u.addresses);
+        }
       }
 
       if (repairsRes.status === 'fulfilled' && repairsRes.value?.success && Array.isArray(repairsRes.value?.repairs)) {
@@ -138,18 +157,131 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleAddAddress = () => {
-    if (!newAddrLine.trim()) {
-      Alert.alert('Required', 'Please enter complete address.');
+  const resetAddressForm = () => {
+    setEditingAddressId(null);
+    setAddrType('Home');
+    setAddrCustomTag('');
+    setAddrFlat('');
+    setAddrStreet('');
+    setAddrLandmark('');
+    setAddrCity('Mumbai');
+    setAddrPincode('');
+    setAddrIsDefault(addresses.length === 0);
+  };
+
+  const handleOpenAddAddress = () => {
+    resetAddressForm();
+    setAddressViewMode('form');
+  };
+
+  const handleOpenEditAddress = (addr: UserAddress) => {
+    setEditingAddressId(addr.id);
+    const isStandard = addr.type === 'Home' || addr.type === 'Office';
+    setAddrType(isStandard ? (addr.type as any) : 'Other');
+    setAddrCustomTag(isStandard ? '' : addr.type);
+    setAddrFlat(addr.flat || '');
+    setAddrStreet(addr.street || '');
+    setAddrLandmark(addr.landmark || '');
+    setAddrCity(addr.city || 'Mumbai');
+    setAddrPincode(addr.pincode || '');
+    setAddrIsDefault(!!addr.is_default);
+    setAddressViewMode('form');
+  };
+
+  const handleSaveAddress = async () => {
+    if (!addrFlat.trim()) {
+      Alert.alert('Required Field', 'Please enter flat / house no. / building.');
       return;
     }
-    setAddresses(prev => [...prev, { id: String(Date.now()), type: newAddrType, line: newAddrLine.trim() }]);
-    setNewAddrLine('');
-    Alert.alert('Address Saved', `${newAddrType} address added to your profile.`);
+    if (!addrStreet.trim()) {
+      Alert.alert('Required Field', 'Please enter street / road / locality.');
+      return;
+    }
+    if (!addrCity.trim()) {
+      Alert.alert('Required Field', 'Please enter city name.');
+      return;
+    }
+    if (!addrPincode.trim() || addrPincode.trim().length < 6) {
+      Alert.alert('Invalid Pincode', 'Please enter a valid 6-digit postal code.');
+      return;
+    }
+
+    const effectiveType = addrType === 'Other' && addrCustomTag.trim() ? addrCustomTag.trim() : addrType;
+
+    setIsSavingAddress(true);
+    try {
+      const payload = {
+        id: editingAddressId || undefined,
+        user_id: user?.id || 1,
+        type: effectiveType,
+        flat: addrFlat.trim(),
+        street: addrStreet.trim(),
+        landmark: addrLandmark.trim(),
+        city: addrCity.trim(),
+        pincode: addrPincode.trim(),
+        is_default: addrIsDefault,
+      };
+
+      const res = await api.saveAddress(payload);
+      if (res && res.success && res.addresses) {
+        setAddresses(res.addresses);
+        updateUser({ addresses: res.addresses });
+        setAddressViewMode('list');
+        resetAddressForm();
+        Alert.alert('Success 🎉', editingAddressId ? 'Address updated successfully!' : 'New address saved to your profile!');
+      } else {
+        Alert.alert('Save Failed', res?.error || 'Could not save address.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to save address.');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    const target = addresses.find(a => a.id === id);
+    if (!target) return;
+    try {
+      const res = await api.saveAddress({
+        ...target,
+        user_id: user?.id || 1,
+        is_default: true,
+      });
+      if (res && res.success && res.addresses) {
+        setAddresses(res.addresses);
+        updateUser({ addresses: res.addresses });
+      }
+    } catch (err) {
+      console.warn('Failed to set default address', err);
+    }
   };
 
   const handleDeleteAddress = (id: string) => {
-    setAddresses(prev => prev.filter(a => a.id !== id));
+    Alert.alert(
+      'Delete Address',
+      'Are you sure you want to remove this saved address?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await api.deleteAddress(id, user?.id || 1);
+              if (res && res.success && res.addresses) {
+                setAddresses(res.addresses);
+                updateUser({ addresses: res.addresses });
+              } else {
+                setAddresses(prev => prev.filter(a => a.id !== id));
+              }
+            } catch (err) {
+              setAddresses(prev => prev.filter(a => a.id !== id));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const customerFullName = user ? `${user.first_name} ${user.last_name}` : (CUSTOMER_NAME || 'Rahul Sharma');
@@ -418,63 +550,304 @@ export default function ProfileScreen() {
 
       {/* ---------- ADDRESSES MODAL ---------- */}
       <Modal visible={isAddressModalOpen} animationType="slide" transparent>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalBox, { backgroundColor: theme.surface }]}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined} 
+          style={styles.modalBackdrop}
+        >
+          <View style={[styles.modalBox, { backgroundColor: theme.surface, maxHeight: '90%' }]}>
+            
+            {/* Modal Header */}
             <View style={styles.modalTopBar}>
-              <View>
-                <Text style={[styles.modalHeading, { color: theme.text }]}>Saved Addresses</Text>
-                <Text style={[styles.modalSubheading, { color: theme.textSecondary }]}>Doorstep pickup & delivery locations</Text>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {addressViewMode === 'form' && (
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setAddressViewMode('list');
+                        resetAddressForm();
+                      }} 
+                      style={[styles.backIconBtn, { backgroundColor: theme.primarySoft }]}
+                      activeOpacity={0.7}
+                    >
+                      <ArrowLeft size={16} color={theme.primary} />
+                    </TouchableOpacity>
+                  )}
+                  <Text style={[styles.modalHeading, { color: theme.text }]}>
+                    {addressViewMode === 'list' ? 'Saved Addresses' : (editingAddressId ? 'Edit Address' : 'Add New Address')}
+                  </Text>
+                </View>
+                <Text style={[styles.modalSubheading, { color: theme.textSecondary }]}>
+                  {addressViewMode === 'list' 
+                    ? 'Doorstep pickup & delivery locations' 
+                    : 'Provide complete street & landmark details'}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setIsAddressModalOpen(false)}>
+              <TouchableOpacity 
+                onPress={() => {
+                  setIsAddressModalOpen(false);
+                  setAddressViewMode('list');
+                  resetAddressForm();
+                }}
+                style={styles.closeBtnBox}
+                activeOpacity={0.7}
+              >
                 <X size={20} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ maxHeight: 220 }} showsVerticalScrollIndicator={false}>
-              {addresses.map(a => (
-                <View key={a.id} style={[styles.addrItem, { borderColor: theme.cardBorder, backgroundColor: theme.background }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.addrTag, { color: theme.primary }]}>{a.type}</Text>
-                    <Text style={[styles.addrText, { color: theme.textSecondary }]}>{a.line}</Text>
+            {addressViewMode === 'list' ? (
+              /* LIST VIEW */
+              <View style={{ flexShrink: 1 }}>
+                <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                  {addresses.length === 0 ? (
+                    <View style={styles.emptyAddressBox}>
+                      <MapPin size={36} color={theme.textMuted} />
+                      <Text style={[styles.emptyAddressTitle, { color: theme.text }]}>No addresses saved yet</Text>
+                      <Text style={[styles.emptyAddressSubtitle, { color: theme.textSecondary }]}>
+                        Add an address for easy one-tap doorstep repairs booking.
+                      </Text>
+                    </View>
+                  ) : (
+                    addresses.map(a => {
+                      const isDefault = !!a.is_default;
+                      const IconComp = a.type === 'Home' ? HomeIcon : (a.type === 'Office' ? Building2 : MapPin);
+                      const displayLine = a.line || [a.flat, a.street, a.landmark, `${a.city || ''} ${a.pincode || ''}`].filter(Boolean).join(', ');
+
+                      return (
+                        <View 
+                          key={a.id} 
+                          style={[
+                            styles.addrCard, 
+                            { 
+                              borderColor: isDefault ? theme.primary : theme.cardBorder, 
+                              backgroundColor: theme.background 
+                            }
+                          ]}
+                        >
+                          <View style={styles.addrCardHeader}>
+                            <View style={styles.addrTypeRow}>
+                              <View style={[styles.addrIconBubble, { backgroundColor: theme.primarySoft }]}>
+                                <IconComp size={16} color={theme.primary} />
+                              </View>
+                              <Text style={[styles.addrCardType, { color: theme.text }]}>{a.type}</Text>
+                              {isDefault && (
+                                <View style={[styles.defaultBadge, { backgroundColor: theme.primarySoft }]}>
+                                  <Check size={11} color={theme.primary} strokeWidth={3} />
+                                  <Text style={[styles.defaultBadgeText, { color: theme.primary }]}>Default</Text>
+                                </View>
+                              )}
+                            </View>
+
+                            <View style={styles.addrActionButtons}>
+                              <TouchableOpacity 
+                                onPress={() => handleOpenEditAddress(a)} 
+                                style={[styles.cardActionBtn, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}
+                                activeOpacity={0.7}
+                              >
+                                <Edit2 size={14} color={theme.textSecondary} />
+                              </TouchableOpacity>
+                              <TouchableOpacity 
+                                onPress={() => handleDeleteAddress(a.id)} 
+                                style={[styles.cardActionBtn, { backgroundColor: '#fee2e2', borderColor: '#fecaca' }]}
+                                activeOpacity={0.7}
+                              >
+                                <Trash2 size={14} color="#ef4444" />
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+
+                          {/* Address lines */}
+                          <View style={styles.addrCardBody}>
+                            {!!a.flat && <Text style={[styles.addrFlatText, { color: theme.text }]}>{a.flat}</Text>}
+                            <Text style={[styles.addrStreetText, { color: theme.textSecondary }]}>
+                              {displayLine}
+                            </Text>
+                          </View>
+
+                          {!isDefault && (
+                            <TouchableOpacity 
+                              style={[styles.setDefaultBtn, { borderColor: theme.cardBorder, backgroundColor: theme.surface }]}
+                              onPress={() => handleSetDefaultAddress(a.id)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.setDefaultBtnText, { color: theme.primary }]}>Set as Default</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })
+                  )}
+                </ScrollView>
+
+                {/* Add Address Trigger Button */}
+                <TouchableOpacity 
+                  style={[styles.primaryAddBtn, { backgroundColor: theme.primary }]}
+                  onPress={handleOpenAddAddress}
+                  activeOpacity={0.8}
+                >
+                  <Plus size={18} color="#ffffff" strokeWidth={2.5} />
+                  <Text style={styles.primaryAddBtnText}>Add New Address</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* FORM VIEW */
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.addressFormScroll}>
+                {/* Type Selection */}
+                <View style={styles.inputWrap}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Address Type</Text>
+                  <View style={styles.typeChipsRow}>
+                    {(['Home', 'Office', 'Other'] as const).map(t => {
+                      const isSelected = addrType === t;
+                      const TypeIcon = t === 'Home' ? HomeIcon : (t === 'Office' ? Building2 : MapPin);
+                      return (
+                        <TouchableOpacity
+                          key={t}
+                          onPress={() => setAddrType(t)}
+                          style={[
+                            styles.typeChipBtn,
+                            { borderColor: theme.cardBorder, backgroundColor: theme.background },
+                            isSelected && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                          ]}
+                          activeOpacity={0.7}
+                        >
+                          <TypeIcon size={14} color={isSelected ? theme.primary : theme.textSecondary} />
+                          <Text style={[styles.typeChipLabel, { color: isSelected ? theme.primary : theme.textSecondary }]}>
+                            {t}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                  <TouchableOpacity onPress={() => handleDeleteAddress(a.id)} style={{ padding: 4 }}>
-                    <Trash2 size={16} color="#ef4444" />
+                </View>
+
+                {/* Optional Custom Label for Other */}
+                {addrType === 'Other' && (
+                  <View style={styles.inputWrap}>
+                    <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Custom Label (e.g. Studio, Parents)</Text>
+                    <TextInput
+                      style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                      value={addrCustomTag}
+                      onChangeText={setAddrCustomTag}
+                      placeholder="e.g. Warehouse, Parents, Studio"
+                      placeholderTextColor={theme.textMuted}
+                    />
+                  </View>
+                )}
+
+                {/* Flat / House No / Building */}
+                <View style={styles.inputWrap}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Flat / House No. / Building *</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                    value={addrFlat}
+                    onChangeText={setAddrFlat}
+                    placeholder="e.g. Flat 402, B-Wing, Sunshine Heights"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+
+                {/* Street / Road / Area */}
+                <View style={styles.inputWrap}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Street / Road / Locality *</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                    value={addrStreet}
+                    onChangeText={setAddrStreet}
+                    placeholder="e.g. Link Road, Indiranagar"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+
+                {/* Landmark */}
+                <View style={styles.inputWrap}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Landmark (Optional)</Text>
+                  <TextInput
+                    style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                    value={addrLandmark}
+                    onChangeText={setAddrLandmark}
+                    placeholder="e.g. Near Metro Station / Opp City Mall"
+                    placeholderTextColor={theme.textMuted}
+                  />
+                </View>
+
+                {/* City & Pincode 2-column */}
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.inputWrap, { flex: 1 }]}>
+                    <Text style={[styles.inputTag, { color: theme.textSecondary }]}>City *</Text>
+                    <TextInput
+                      style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                      value={addrCity}
+                      onChangeText={setAddrCity}
+                      placeholder="e.g. Mumbai"
+                      placeholderTextColor={theme.textMuted}
+                    />
+                  </View>
+
+                  <View style={[styles.inputWrap, { flex: 1 }]}>
+                    <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Pincode *</Text>
+                    <TextInput
+                      style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                      value={addrPincode}
+                      onChangeText={setAddrPincode}
+                      placeholder="e.g. 400053"
+                      placeholderTextColor={theme.textMuted}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                    />
+                  </View>
+                </View>
+
+                {/* Make Default Switch */}
+                <View style={[styles.defaultSwitchRow, { borderColor: theme.cardBorder, backgroundColor: theme.background }]}>
+                  <View style={{ flex: 1, paddingRight: 10 }}>
+                    <Text style={[styles.switchTitle, { color: theme.text }]}>Make default address</Text>
+                    <Text style={[styles.switchSubtitle, { color: theme.textSecondary }]}>
+                      Pre-selected for doorstep pickup
+                    </Text>
+                  </View>
+                  <Switch
+                    value={addrIsDefault}
+                    onValueChange={setAddrIsDefault}
+                    trackColor={{ false: '#e2e8f0', true: theme.primary }}
+                    thumbColor="#ffffff"
+                  />
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.formActionButtonsRow}>
+                  <TouchableOpacity
+                    style={[styles.cancelBtn, { borderColor: theme.cardBorder, backgroundColor: theme.background }]}
+                    onPress={() => {
+                      setAddressViewMode('list');
+                      resetAddressForm();
+                    }}
+                    disabled={isSavingAddress}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.cancelBtnText, { color: theme.textSecondary }]}>Cancel</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.saveAddressBtn, { backgroundColor: theme.primary }, isSavingAddress && { opacity: 0.6 }]}
+                    onPress={handleSaveAddress}
+                    disabled={isSavingAddress}
+                    activeOpacity={0.8}
+                  >
+                    {isSavingAddress ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <Text style={styles.saveAddressBtnText}>
+                        {editingAddressId ? 'Update Address' : 'Save Address'}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
-              ))}
-            </ScrollView>
 
-            <View style={styles.addAddrBox}>
-              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
-                {['Home', 'Office', 'Other'].map(t => (
-                  <TouchableOpacity
-                    key={t}
-                    onPress={() => setNewAddrType(t)}
-                    style={[
-                      styles.typeChip, 
-                      { borderColor: theme.cardBorder },
-                      newAddrType === t && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                    ]}
-                  >
-                    <Text style={[styles.typeChipText, { color: newAddrType === t ? theme.primary : theme.textSecondary }]}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              </ScrollView>
+            )}
 
-              <TextInput
-                style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text, marginBottom: 8 }]}
-                value={newAddrLine}
-                onChangeText={setNewAddrLine}
-                placeholder="Enter flat, building, landmark, pincode..."
-                placeholderTextColor={theme.textMuted}
-              />
-
-              <TouchableOpacity style={styles.addAddrBtn} onPress={handleAddAddress}>
-                <Text style={styles.addAddrBtnText}>+ Add Address</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>
@@ -680,47 +1053,189 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
-  addrItem: {
+  backIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeBtnBox: {
+    padding: 4,
+  },
+  emptyAddressBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+  },
+  emptyAddressTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+  emptyAddressSubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  addrCard: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    marginBottom: 12,
+  },
+  addrCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  addrTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addrIconBubble: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addrCardType: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  defaultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  defaultBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  addrActionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardActionBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addrCardBody: {
+    marginBottom: 6,
+  },
+  addrFlatText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  addrStreetText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  setDefaultBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  setDefaultBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  primaryAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: 14,
+    marginTop: 10,
+  },
+  primaryAddBtnText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  addressFormScroll: {
+    gap: 12,
+    paddingBottom: 16,
+  },
+  typeChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typeChipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  typeChipLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  defaultSwitchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 8,
+    marginTop: 4,
   },
-  addrTag: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 2,
-  },
-  addrText: {
-    fontSize: 12,
-  },
-  addAddrBox: {
-    marginTop: 10,
-    paddingTop: 10,
-  },
-  typeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  typeChipText: {
-    fontSize: 11,
+  switchTitle: {
+    fontSize: 13,
     fontWeight: '700',
   },
-  addAddrBtn: {
-    backgroundColor: '#0284c7',
-    height: 38,
-    borderRadius: 10,
+  switchSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  formActionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  cancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addAddrBtnText: {
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  saveAddressBtn: {
+    flex: 2,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveAddressBtnText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
 });

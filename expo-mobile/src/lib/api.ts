@@ -1,15 +1,40 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { brands as fallbackBrands, modelsByBrand as fallbackModelsByBrand, servicesForDevice as fallbackServices } from './data';
 
+// Auto-detect host IP from Expo bundler (handles Wi-Fi IP changes automatically)
+const expoHostUri =
+  Constants.expoConfig?.hostUri ||
+  (Constants as any).manifest2?.extra?.expoClient?.hostUri ||
+  (Constants as any).manifest?.debuggerHost ||
+  '';
+const autoDetectedHost = expoHostUri ? expoHostUri.split(':')[0] : null;
+
 // Dynamic Environment Configuration (Loaded from .env / EXPO_PUBLIC_*)
-const DEV_LAN_IP = process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.125.174.211';
+const DEV_LAN_IP = autoDetectedHost || process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.125.174.212';
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
-export const API_BASE_URL = ENV_API_URL || Platform.select({
-  android: `http://${DEV_LAN_IP}:8000/api`,
-  ios: `http://${DEV_LAN_IP}:8000/api`,
-  default: `http://localhost:8000/api`,
-}) || `http://${DEV_LAN_IP}:8000/api`;
+export const API_BASE_URL =
+  (autoDetectedHost ? `http://${autoDetectedHost}:8000/api` : null) ||
+  ENV_API_URL ||
+  Platform.select({
+    android: `http://${DEV_LAN_IP}:8000/api`,
+    ios: `http://${DEV_LAN_IP}:8000/api`,
+    default: `http://localhost:8000/api`,
+  }) ||
+  `http://${DEV_LAN_IP}:8000/api`;
+
+export interface UserAddress {
+  id: string;
+  type: 'Home' | 'Office' | 'Other' | string;
+  flat: string;
+  street: string;
+  landmark?: string;
+  city: string;
+  pincode: string;
+  line: string;
+  is_default?: boolean;
+}
 
 export interface UserProfile {
   id: number;
@@ -21,6 +46,7 @@ export interface UserProfile {
   role?: string;
   repairs_count?: number;
   total_spent?: number | string;
+  addresses?: UserAddress[];
 }
 
 export interface AuthResponse {
@@ -64,6 +90,9 @@ export interface ApiRepair {
   problem: string;
   status: string;
   estimate: number;
+  extra_charges?: number;
+  extra_charges_note?: string;
+  additional_charges?: Array<{ title: string; amount: number }>;
   appointment_date?: string;
   method?: string;
   payment_status?: string;
@@ -73,7 +102,10 @@ export interface ApiRepair {
 const CANDIDATE_BASE_URLS = Array.from(
   new Set([
     API_BASE_URL,
+    autoDetectedHost ? `http://${autoDetectedHost}:8000/api` : '',
+    ENV_API_URL || '',
     `http://${DEV_LAN_IP}:8000/api`,
+    'http://10.125.174.212:8000/api',
     Platform.select({
       android: 'http://10.0.2.2:8000/api',
       ios: 'http://localhost:8000/api',
@@ -450,28 +482,65 @@ export const api = {
     } catch (err) {
       return {
         success: true,
-        banners: [
-          {
-            id: 1,
-            title: 'Flat ₹500 Off Screen Repairs',
-            subtitle: 'Use promo code FIX500 at checkout · Doorstep fix in 30 mins',
-            badge_text: 'FLASH DEAL',
-            bg_gradient: 'blue',
-            link_type: 'book',
-            is_active: true,
-            display_order: 1,
-          },
-          {
-            id: 2,
-            title: 'Sell Old Phone & Get Instant Cash',
-            subtitle: 'Free doorstep evaluation · Highest trade-in price guaranteed',
-            badge_text: 'INSTANT PAYOUT',
-            bg_gradient: 'amber',
-            link_type: 'sell',
-            is_active: true,
-            display_order: 2,
-          }
-        ],
+        banners: [],
+      };
+    }
+  },
+
+  // Saved Addresses
+  async getAddresses(userId?: number): Promise<{ success: boolean; addresses: UserAddress[] }> {
+    try {
+      const q = userId ? `?user_id=${userId}` : '';
+      const res: any = await request(`/user/addresses${q}`, { method: 'GET' });
+      return {
+        success: res?.success ?? true,
+        addresses: Array.isArray(res?.addresses) ? res.addresses : [],
+      };
+    } catch (err) {
+      return {
+        success: false,
+        addresses: [],
+      };
+    }
+  },
+
+  async saveAddress(address: Partial<UserAddress> & { user_id?: number }): Promise<{
+    success: boolean;
+    message?: string;
+    address?: UserAddress;
+    addresses?: UserAddress[];
+    error?: string;
+  }> {
+    try {
+      const res: any = await request('/user/addresses', {
+        method: 'POST',
+        body: JSON.stringify(address),
+      });
+      return res;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to save address',
+      };
+    }
+  },
+
+  async deleteAddress(id: string, userId?: number): Promise<{
+    success: boolean;
+    message?: string;
+    addresses?: UserAddress[];
+    error?: string;
+  }> {
+    try {
+      const q = userId ? `?user_id=${userId}` : '';
+      const res: any = await request(`/user/addresses/${id}${q}`, {
+        method: 'DELETE',
+      });
+      return res;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to delete address',
       };
     }
   },

@@ -113,12 +113,22 @@ export const api = {
     return apiRequest<{ success: boolean; repairs: any[]; stats: any }>("/admin/repairs");
   },
 
-  async updateRepairStatus(id: string, status: string) {
+  async updateRepairStatus(
+    id: string,
+    status: string,
+    extraData?: {
+      estimate?: number | undefined;
+      extra_charges?: number | undefined;
+      extra_charges_note?: string | undefined;
+      additional_charges?: Array<{ title: string; amount: number }> | undefined;
+      payment_status?: string | undefined;
+    }
+  ) {
     return apiRequest<{ success: boolean; message: string; repair: any }>(
       `/admin/repairs/${id}/status`,
       {
         method: "PUT",
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...extraData }),
       }
     );
   },
@@ -285,14 +295,14 @@ export const api = {
 
   async createBanner(data: {
     title: string;
-    subtitle?: string;
-    badge_text?: string;
-    image_url?: string;
-    bg_gradient?: string;
-    link_type?: string;
-    link_value?: string;
-    is_active?: boolean;
-    display_order?: number;
+    subtitle?: string | undefined;
+    badge_text?: string | undefined;
+    image_url?: string | undefined;
+    bg_gradient?: string | undefined;
+    link_type?: string | undefined;
+    link_value?: string | undefined;
+    is_active?: boolean | undefined;
+    display_order?: number | undefined;
   }) {
     return apiRequest<{ success: boolean; message: string; banner: any }>("/admin/banners", {
       method: "POST",
@@ -300,17 +310,17 @@ export const api = {
     });
   },
 
-  async updateBanner(id: number, data: Partial<{
-    title: string;
-    subtitle: string;
-    badge_text: string;
-    image_url: string;
-    bg_gradient: string;
-    link_type: string;
-    link_value: string;
-    is_active: boolean;
-    display_order: number;
-  }>) {
+  async updateBanner(id: number, data: {
+    title?: string | undefined;
+    subtitle?: string | undefined;
+    badge_text?: string | undefined;
+    image_url?: string | undefined;
+    bg_gradient?: string | undefined;
+    link_type?: string | undefined;
+    link_value?: string | undefined;
+    is_active?: boolean | undefined;
+    display_order?: number | undefined;
+  }) {
     return apiRequest<{ success: boolean; message: string; banner: any }>(`/admin/banners/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),

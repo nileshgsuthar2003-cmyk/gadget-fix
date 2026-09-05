@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshCon
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
-  ChevronLeft, CheckCircle2, Circle, FileText 
+  ChevronLeft, CheckCircle2, Circle, FileText, Plus, Sparkles, Info 
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import StatusBadge from '../components/StatusBadge';
@@ -50,7 +50,6 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
     }
   }, [repairId]);
 
-  // Auto-refresh when opening / focusing Track Repair screen
   useFocusEffect(
     useCallback(() => {
       fetchLiveRepair();
@@ -82,11 +81,13 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
 
   const currentStep = getTrackingCurrentStep(repair.status);
   const isPickup = repair.method === "Pickup & Delivery" || repair.method === "pickup";
-  const pickupFee = isPickup ? 99 : 0;
+  const totalEstimate = Number(repair.estimate || 0);
+  const extraCharges = Number(repair.extra_charges || 0);
+  const hasExtraCharges = extraCharges > 0;
+  const baseServicePrice = Math.max(0, totalEstimate - extraCharges);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.cardBorder }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <ChevronLeft size={24} color={theme.text} />
@@ -108,22 +109,19 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
         }
       >
         
-        {/* Summary Card */}
-        <Card style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.repairTag, { color: theme.primary }]}>#{repair.id.replace("REP-2026-", "REP")}</Text>
-              <Text style={[styles.deviceService, { color: theme.text }]} numberOfLines={1}>
-                {repair.device} · {repair.service}
-              </Text>
+        <Card style={styles.deviceBanner}>
+          <View style={styles.bannerTop}>
+            <View>
+              <Text style={[styles.repairIdText, { color: theme.textSecondary }]}>Booking #{repair.id}</Text>
+              <Text style={[styles.deviceText, { color: theme.text }]}>{repair.device}</Text>
             </View>
             <StatusBadge status={repair.status} />
           </View>
+          <Text style={[styles.serviceText, { color: theme.textSecondary }]}>{repair.service}</Text>
         </Card>
 
-        {/* Tracking Timeline */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Repair Timeline</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Repair Status Progress</Text>
           <Card style={styles.timelineCard}>
             {trackingSteps.map((stepName, index) => {
               const isCompleted = index <= currentStep;
@@ -158,7 +156,6 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
           </Card>
         </View>
 
-        {/* Booking Details Card */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Booking Details</Text>
           <Card style={styles.detailsCard}>
@@ -166,80 +163,122 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Problem</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.problem}</Text>
             </View>
-
             {liveRepair.description ? (
               <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
                 <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Note</Text>
                 <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.description}</Text>
               </View>
             ) : null}
-
             {liveRepair.address ? (
               <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
                 <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Address</Text>
                 <Text style={[styles.kvValue, { color: theme.text }]}>{liveRepair.address}</Text>
               </View>
             ) : null}
-
             <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
               <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Appointment</Text>
               <Text style={[styles.kvValue, { color: theme.text }]}>{repair.appointment}, {repair.time}</Text>
             </View>
-            <View style={[styles.kvRow, { borderBottomColor: theme.divider }]}>
-              <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Repair Method</Text>
-              <Text style={[styles.kvValue, { color: theme.text }]}>{repair.method}</Text>
-            </View>
-
-            {/* Attached Photos */}
-            {liveRepair.photos && Array.isArray(liveRepair.photos) && liveRepair.photos.length > 0 && (
-              <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.divider }}>
-                <Text style={[styles.kvKey, { color: theme.textSecondary, marginBottom: 8 }]}>Attached Device Photos ({liveRepair.photos.length})</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                  {liveRepair.photos.map((photoUrl: string, idx: number) => {
-                    const imgUri = photoUrl.startsWith('http') || photoUrl.startsWith('file:') || photoUrl.startsWith('content:')
-                      ? photoUrl
-                      : `${API_BASE_URL.replace('/api', '')}${photoUrl}`;
-                    return (
-                      <View key={idx} style={{ width: 68, height: 68, borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: theme.cardBorder }}>
-                        <Image source={{ uri: imgUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                      </View>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
-
             <View style={[styles.kvRow, { borderBottomWidth: 0 }]}>
-              <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Payment Status</Text>
-              <Text style={[styles.kvValue, { color: repair.payment === 'Paid' ? '#16a34a' : '#d97706' }]}>
-                {repair.payment}
-              </Text>
+              <Text style={[styles.kvKey, { color: theme.textSecondary }]}>Payment</Text>
+              <Text style={[styles.kvValue, { color: repair.payment === 'Paid' ? '#16a34a' : '#d97706' }]}>{repair.payment}</Text>
             </View>
           </Card>
         </View>
 
-        {/* Pricing Card */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            {repair.status === "Completed" ? "Final Cost" : "Estimated Cost"}
-          </Text>
-          <Card style={styles.priceCard}>
-            <View style={styles.priceRow}>
-              <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Service ({repair.service})</Text>
-              <Text style={[styles.priceValue, { color: theme.text }]}>{inr(repair.estimate - pickupFee)}</Text>
-            </View>
-            {isPickup && (
-              <View style={styles.priceRow}>
-                <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Pickup Fee</Text>
-                <Text style={[styles.priceValue, { color: theme.text }]}>{inr(pickupFee)}</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              {repair.status === "Completed" ? "Final Cost Breakdown" : "Price & Estimate Details"}
+            </Text>
+            {hasExtraCharges && (
+              <View style={[styles.priceAdjustedBadge, { backgroundColor: isDark ? '#451a03' : '#fef3c7' }]}>
+                <Sparkles size={11} color="#d97706" />
+                <Text style={styles.priceAdjustedBadgeText}>Additional Charges Added</Text>
               </View>
             )}
-            <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+          </View>
+
+          <Card style={styles.priceCard}>
+            {/* 1. Base Repair Price */}
             <View style={styles.priceRow}>
-              <Text style={[styles.priceTotalLabel, { color: theme.text }]}>
-                {repair.status === "Completed" ? "Total Paid" : "Estimated Total"}
-              </Text>
-              <Text style={[styles.priceTotalValue, { color: theme.text }]}>{inr(repair.estimate)}</Text>
+              <View style={styles.priceLabelCol}>
+                <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Base Repair Price</Text>
+                <Text style={[styles.priceSubLabel, { color: theme.textMuted }]}>{repair.service}</Text>
+              </View>
+              <Text style={[styles.priceValue, { color: theme.text }]}>{inr(baseServicePrice)}</Text>
+            </View>
+
+            {/* 2. Doorstep Pickup & Delivery */}
+            {isPickup && (
+              <View style={styles.priceRow}>
+                <Text style={[styles.priceLabel, { color: theme.textSecondary }]}>Doorstep Pickup & Delivery</Text>
+                <Text style={[styles.priceValue, { color: '#10b981', fontWeight: '700' }]}>Free</Text>
+              </View>
+            )}
+
+            {/* 3. Additional Charges Added (Separate) */}
+            {hasExtraCharges && (
+              <View style={[
+                styles.extraChargesBox, 
+                { 
+                  backgroundColor: isDark ? '#1e1b4b' : '#eff6ff', 
+                  borderColor: isDark ? '#3730a3' : '#bfdbfe' 
+                }
+              ]}>
+                <View style={styles.extraChargesHeader}>
+                  <View style={styles.extraChargesTitleRow}>
+                    <Plus size={15} color={isDark ? '#818cf8' : '#2563eb'} />
+                    <Text style={[styles.extraChargesTitle, { color: isDark ? '#93c5fd' : '#1d4ed8' }]}>
+                      Additional Charges
+                    </Text>
+                  </View>
+                  <Text style={[styles.extraChargesAmount, { color: isDark ? '#93c5fd' : '#1d4ed8' }]}>
+                    +{inr(extraCharges)}
+                  </Text>
+                </View>
+
+                {/* Multi-item Breakdown if available */}
+                {repair.additional_charges && Array.isArray(repair.additional_charges) && repair.additional_charges.length > 0 ? (
+                  <View style={{ marginTop: 6, gap: 4 }}>
+                    {repair.additional_charges.map((item: any, idx: number) => (
+                      <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[{ fontSize: 12, fontWeight: '600', flex: 1, paddingRight: 8 }, { color: isDark ? '#e0e7ff' : '#1e3a8a' }]}>
+                          • {item.title || `Item #${idx + 1}`}
+                        </Text>
+                        <Text style={[{ fontSize: 12, fontWeight: '700' }, { color: isDark ? '#93c5fd' : '#1d4ed8' }]}>
+                          +{inr(item.amount)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : repair.extra_charges_note ? (
+                  <Text style={[styles.extraChargesReason, { color: isDark ? '#c7d2fe' : '#3b82f6' }]}>
+                    Reason: {repair.extra_charges_note}
+                  </Text>
+                ) : (
+                  <Text style={[styles.extraChargesReason, { color: isDark ? '#c7d2fe' : '#3b82f6' }]}>
+                    Approved additional components & service charges
+                  </Text>
+                )}
+              </View>
+            )}
+
+            <View style={[styles.divider, { backgroundColor: theme.divider }]} />
+
+            {/* 4. Full Total */}
+            <View style={styles.priceRow}>
+              <View>
+                <Text style={[styles.priceTotalLabel, { color: theme.text }]}>
+                  {repair.status === "Completed" ? "Full Final Total" : "Full Total to Pay"}
+                </Text>
+                {hasExtraCharges && (
+                  <Text style={[styles.priceCompareText, { color: theme.textMuted }]}>
+                    Base: {inr(baseServicePrice)} + Additional Charges: {inr(extraCharges)}
+                  </Text>
+                )}
+              </View>
+              <Text style={[styles.priceTotalValue, { color: theme.primary }]}>{inr(totalEstimate)}</Text>
             </View>
           </Card>
 
@@ -254,12 +293,13 @@ export default function RepairScreen({ route, navigation }: RootStackScreenProps
           ) : (
             <View style={[styles.warningBox, { backgroundColor: isDark ? '#451a03' : '#fffbeb' }]}>
               <Text style={[styles.warningText, { color: isDark ? '#fde68a' : '#b45309' }]}>
-                Final repair amount will be confirmed after physical inspection.
+                {hasExtraCharges
+                  ? "Note: Total price includes the additional charges approved during device inspection."
+                  : "Final repair amount will be confirmed after physical inspection."}
               </Text>
             </View>
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -300,32 +340,55 @@ const styles = StyleSheet.create({
   notFoundText: {
     fontSize: 16,
   },
-  summaryCard: {
+  deviceBanner: {
     padding: 16,
     borderRadius: 18,
     marginBottom: 20,
   },
-  summaryRow: {
+  bannerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 6,
   },
-  repairTag: {
-    fontSize: 13,
+  repairIdText: {
+    fontSize: 12,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  deviceService: {
+  deviceText: {
     fontSize: 16,
     fontWeight: '800',
+  },
+  serviceText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   section: {
     marginBottom: 20,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  priceAdjustedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  priceAdjustedBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#d97706',
   },
   timelineCard: {
     padding: 16,
@@ -380,26 +443,71 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  priceLabelCol: {
+    flex: 1,
+    paddingRight: 10,
   },
   priceLabel: {
     fontSize: 14,
+    fontWeight: '500',
+  },
+  priceSubLabel: {
+    fontSize: 11,
+    marginTop: 1,
   },
   priceValue: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  extraChargesBox: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginVertical: 6,
+  },
+  extraChargesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  extraChargesTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  extraChargesTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  extraChargesAmount: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  extraChargesReason: {
+    fontSize: 11,
     fontWeight: '600',
+    lineHeight: 15,
   },
   divider: {
     height: 1,
     marginVertical: 10,
   },
   priceTotalLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
+  },
+  priceCompareText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
   priceTotalValue: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   invoiceBtn: {
     flexDirection: 'row',
@@ -418,7 +526,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   warningText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
+    lineHeight: 16,
   },
 });

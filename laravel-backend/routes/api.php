@@ -29,6 +29,11 @@ Route::get('/auth/me', [AuthController::class, 'me']);
 Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
 Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
 
+// User Saved Addresses Endpoints
+Route::get('/user/addresses', [AuthController::class, 'getAddresses']);
+Route::post('/user/addresses', [AuthController::class, 'saveAddress']);
+Route::delete('/user/addresses/{id}', [AuthController::class, 'deleteAddress']);
+
 // Email OTP Forgot Password Endpoints
 Route::post('/auth/forgot-password/send-otp', [AuthController::class, 'sendResetOtp']);
 Route::post('/auth/forgot-password/verify-otp', [AuthController::class, 'verifyResetOtp']);

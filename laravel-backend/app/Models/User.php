@@ -18,6 +18,7 @@ class User extends Authenticatable
         'phone',
         'password',
         'role',
+        'addresses',
     ];
 
     protected $hidden = [
@@ -27,6 +28,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'password' => 'hashed',
+        'addresses' => 'array',
     ];
 
     protected $appends = [
