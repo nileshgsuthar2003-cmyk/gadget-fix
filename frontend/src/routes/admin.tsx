@@ -60,8 +60,8 @@ import { inr, RepairStatus } from "@/lib/data";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
-import { UsedPhonesTab } from "./components/admin/UsedPhonesTab";
-import { BuyRequestsTab } from "./components/admin/BuyRequestsTab";
+import { UsedPhonesTab } from "@/components/admin/UsedPhonesTab";
+import { BuyRequestsTab } from "@/components/admin/BuyRequestsTab";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
