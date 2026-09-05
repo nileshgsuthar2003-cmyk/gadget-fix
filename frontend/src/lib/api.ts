@@ -363,4 +363,44 @@ export const api = {
       method: "DELETE",
     });
   },
+
+  // =====================================================
+  //  Used / Refurbished Phones Marketplace
+  // =====================================================
+
+  async getAdminUsedPhones() {
+    return apiRequest<{ success: boolean; phones: any[] }>("/admin/used-phones");
+  },
+
+  async createUsedPhone(data: any) {
+    return apiRequest<{ success: boolean; message: string; phone?: any; error?: string }>("/admin/used-phones", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async updateUsedPhone(id: number, data: any) {
+    return apiRequest<{ success: boolean; message: string; phone?: any; error?: string }>(`/admin/used-phones/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteUsedPhone(id: number) {
+    return apiRequest<{ success: boolean; message: string; error?: string }>(`/admin/used-phones/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Buy Requests
+  async getBuyRequests() {
+    return apiRequest<{ success: boolean; requests: any[] }>("/admin/phone-buy-requests");
+  },
+
+  async updateBuyRequestStatus(id: number, status: string) {
+    return apiRequest<{ success: boolean; message: string; error?: string }>(`/admin/phone-buy-requests/${id}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    });
+  },
 };

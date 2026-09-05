@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
   Smartphone, Battery, Plug, Camera, Speaker, Droplets, Bell, Search,
-  ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu, Megaphone 
+  ShoppingBag, Zap, Sparkles, ArrowRight, ShieldCheck, Wrench, Cpu, Megaphone,
+  Settings, ClipboardList
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { inr } from '../lib/data';
@@ -284,6 +285,43 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
             </ScrollView>
           )}
         </View>
+
+        {/* Admin Panel — Only visible to admins */}
+        {user?.role === 'admin' && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Panel</Text>
+              <View style={[styles.adminBadge, { backgroundColor: isDark ? '#7f1d1d' : '#fef2f2' }]}>
+                <ShieldCheck size={12} color={isDark ? '#fca5a5' : '#dc2626'} />
+                <Text style={[styles.adminBadgeText, { color: isDark ? '#fca5a5' : '#dc2626' }]}>Admin</Text>
+              </View>
+            </View>
+            <View style={styles.adminGrid}>
+              <TouchableOpacity
+                style={[styles.adminCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}
+                onPress={() => (navigation as any).navigate('AdminAddPhone')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.adminCardIcon, { backgroundColor: theme.primarySoft }]}>
+                  <Settings size={22} color={theme.primary} />
+                </View>
+                <Text style={[styles.adminCardTitle, { color: theme.text }]}>Add Used Phones</Text>
+                <Text style={[styles.adminCardSub, { color: theme.textSecondary }]}>Manage listings</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.adminCard, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}
+                onPress={() => (navigation as any).navigate('AdminBuyRequests')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.adminCardIcon, { backgroundColor: isDark ? '#78350f' : '#fef3c7' }]}>
+                  <ClipboardList size={22} color="#d97706" />
+                </View>
+                <Text style={[styles.adminCardTitle, { color: theme.text }]}>Buy Requests</Text>
+                <Text style={[styles.adminCardSub, { color: theme.textSecondary }]}>View orders</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -443,4 +481,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 10,
   },
+  adminBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  adminBadgeText: { fontSize: 11, fontWeight: '700' },
+  adminGrid: { flexDirection: 'row', gap: 12 },
+  adminCard: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  adminCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  adminCardTitle: { fontSize: 14, fontWeight: '800' },
+  adminCardSub: { fontSize: 11, marginTop: 2 },
 });

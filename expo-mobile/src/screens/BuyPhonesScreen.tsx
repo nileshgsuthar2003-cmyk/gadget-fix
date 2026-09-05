@@ -1,56 +1,113 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
-  Modal, Alert 
+  Modal, Alert, ActivityIndicator, RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   ChevronLeft, Search, Smartphone, ShieldCheck, BatteryCharging, 
-  Check, X, Truck, CreditCard, Sparkles, Tag 
+  Check, X, Truck, CreditCard, Sparkles, Tag, Package
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { refurbishedPhones, RefurbishedPhone, inr, brands } from '../lib/data';
+import { api, ApiUsedPhone } from '../lib/api';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
+function inr(amount: number) {
+  return '₹' + amount.toLocaleString('en-IN');
+}
+
 export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'BuyPhones'>) {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+
+  const [phones, setPhones] = useState<ApiUsedPhone[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [selectedBrand, setSelectedBrand] = useState<string>('All');
   const [selectedCondition, setSelectedCondition] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   
   // Checkout Modal State
-  const [selectedPhone, setSelectedPhone] = useState<RefurbishedPhone | null>(null);
+  const [selectedPhone, setSelectedPhone] = useState<ApiUsedPhone | null>(null);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [address, setAddress] = useState<string>(user?.addresses?.[0]?.line || '');
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('upi');
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchPhones = useCallback(async () => {
+    try {
+      const res = await api.getUsedPhones();
+      if (res.success && Array.isArray(res.phones)) {
+        setPhones(res.phones);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch used phones:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPhones();
+  }, [fetchPhones]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPhones();
+  };
+
+  // Derive unique brands from live data
+  const availableBrands = useMemo(() => {
+    const brands = Array.from(new Set(phones.map(p => p.brand)));
+    return ['All', ...brands];
+  }, [phones]);
 
   const filteredPhones = useMemo(() => {
-    return refurbishedPhones.filter((phone) => {
+    return phones.filter((phone) => {
       const matchBrand = selectedBrand === 'All' || phone.brand.toLowerCase() === selectedBrand.toLowerCase();
       const matchCondition = selectedCondition === 'All' || phone.condition.toLowerCase() === selectedCondition.toLowerCase();
       const matchQuery = phone.model.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          phone.brand.toLowerCase().includes(searchQuery.toLowerCase());
       return matchBrand && matchCondition && matchQuery;
     });
-  }, [selectedBrand, selectedCondition, searchQuery]);
+  }, [phones, selectedBrand, selectedCondition, searchQuery]);
 
-  const handleOpenBuy = (phone: RefurbishedPhone) => {
+  const handleOpenBuy = (phone: ApiUsedPhone) => {
     setSelectedPhone(phone);
     setModalVisible(true);
   };
 
-  const handlePlaceOrder = () => {
-    if (!selectedPhone) return;
-    setModalVisible(false);
-    Alert.alert(
-      "Order Confirmed! 🎉",
-      `Your order for ${selectedPhone.model} (${selectedPhone.storage}) has been placed.\nEstimated Delivery: 2-3 Days.\nFree 6-month warranty included!`,
-      [{ text: "Done", onPress: () => navigation.goBack() }]
-    );
+  const handlePlaceOrder = async () => {
+    if (!selectedPhone || !user) return;
+    setSubmitting(true);
+    try {
+      const res = await api.submitBuyRequest(selectedPhone.id, {
+        customer_name: user.name || `${user.first_name} ${user.last_name}`,
+        customer_phone: user.phone,
+        customer_email: user.email,
+        address,
+        payment_method: paymentMethod,
+        user_id: user.id,
+      });
+      setModalVisible(false);
+      if (res.success) {
+        Alert.alert(
+          "Order Confirmed! 🎉",
+          `Your order for ${selectedPhone.brand} ${selectedPhone.model} (${selectedPhone.storage}) has been placed.\nEstimated Delivery: 2-3 Days.\nFree 6-month warranty included!`,
+          [{ text: "Done", onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert("Error", res.error || 'Failed to place order.');
+      }
+    } catch (err) {
+      Alert.alert("Error", 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -64,7 +121,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}>
         
         {/* Banner */}
         <View style={[styles.trustBanner, { backgroundColor: theme.primarySoft, borderColor: theme.cardBorder }]}>
@@ -96,7 +153,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
 
         {/* Brand Filters */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['All', 'Apple', 'Samsung', 'OnePlus', 'Google'].map((brand) => (
+          {availableBrands.map((brand) => (
             <TouchableOpacity
               key={brand}
               style={[
@@ -140,9 +197,15 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
         </View>
 
         {/* Product Cards */}
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.emptyTitle, { color: theme.textSecondary, fontSize: 14 }]}>Loading phones...</Text>
+          </View>
+        ) : (
         <View style={styles.productList}>
           {filteredPhones.map((phone) => {
-            const savings = phone.originalPrice - phone.price;
+            const savings = phone.original_price - phone.price;
 
             return (
               <Card key={phone.id} style={styles.productCard}>
@@ -158,12 +221,12 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                       <View style={[styles.batteryBadge, { backgroundColor: isDark ? '#064e3b' : '#dcfce7' }]}>
                         <BatteryCharging size={12} color={isDark ? '#34d399' : '#166534'} />
                         <Text style={[styles.batteryBadgeText, { color: isDark ? '#34d399' : '#166534' }]}>
-                          {phone.batteryHealth}% Battery
+                          {phone.battery_health}% Battery
                         </Text>
                       </View>
                     </View>
                     
-                    <Text style={[styles.productTitle, { color: theme.text }]}>{phone.model}</Text>
+                    <Text style={[styles.productTitle, { color: theme.text }]}>{phone.brand} {phone.model}</Text>
                     <Text style={[styles.productSpecs, { color: theme.textSecondary }]}>
                       {phone.storage} • {phone.color}
                     </Text>
@@ -181,7 +244,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                   <View>
                     <View style={styles.priceContainer}>
                       <Text style={[styles.currentPrice, { color: theme.text }]}>{inr(phone.price)}</Text>
-                      <Text style={[styles.originalPrice, { color: theme.textMuted }]}>{inr(phone.originalPrice)}</Text>
+                      <Text style={[styles.originalPrice, { color: theme.textMuted }]}>{inr(phone.original_price)}</Text>
                     </View>
                     <Text style={styles.savingsText}>Save {inr(savings)}</Text>
                   </View>
@@ -200,14 +263,15 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
 
           {filteredPhones.length === 0 && (
             <View style={styles.emptyContainer}>
-              <Smartphone size={48} color={theme.textMuted} />
-              <Text style={[styles.emptyTitle, { color: theme.text }]}>No Phones Found</Text>
+              <Package size={48} color={theme.textMuted} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>No Phones Available</Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                Try adjusting your brand or condition filters.
+                {phones.length === 0 ? 'No phones have been listed yet. Check back soon!' : 'Try adjusting your brand or condition filters.'}
               </Text>
             </View>
           )}
         </View>
+        )}
 
       </ScrollView>
 
@@ -233,7 +297,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                 <View style={[styles.modalItemCard, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
                   <Smartphone size={28} color={theme.primary} />
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.modalItemTitle, { color: theme.text }]}>{selectedPhone.model}</Text>
+                    <Text style={[styles.modalItemTitle, { color: theme.text }]}>{selectedPhone.brand} {selectedPhone.model}</Text>
                     <Text style={[styles.modalItemSpecs, { color: theme.textSecondary }]}>
                       {selectedPhone.storage} • {selectedPhone.color} • {selectedPhone.condition} Condition
                     </Text>
@@ -308,13 +372,18 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
 
             {/* Place Order CTA */}
             <TouchableOpacity
-              style={[styles.confirmOrderBtn, { backgroundColor: theme.primary }]}
+              style={[styles.confirmOrderBtn, { backgroundColor: theme.primary, opacity: submitting ? 0.6 : 1 }]}
               onPress={handlePlaceOrder}
+              disabled={submitting}
               activeOpacity={0.8}
             >
-              <Text style={styles.confirmOrderBtnText}>
-                Place Order • {selectedPhone ? inr(selectedPhone.price) : ''}
-              </Text>
+              {submitting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.confirmOrderBtnText}>
+                  Place Order • {selectedPhone ? inr(selectedPhone.price) : ''}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

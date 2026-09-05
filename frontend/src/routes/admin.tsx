@@ -60,6 +60,9 @@ import { inr, RepairStatus } from "@/lib/data";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
+import { UsedPhonesTab } from "./components/admin/UsedPhonesTab";
+import { BuyRequestsTab } from "./components/admin/BuyRequestsTab";
+
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
@@ -190,7 +193,7 @@ function AdminPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Admin Dashboard State
-  const [activeTab, setActiveTab] = useState<"catalog" | "services" | "banners" | "dashboard" | "repairs" | "users">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "services" | "banners" | "dashboard" | "repairs" | "users" | "used-phones" | "buy-requests">("catalog");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState<string>("" );
@@ -1266,6 +1269,8 @@ function AdminPage() {
     { id: "catalog", label: "Brands & Pricing Catalog", icon: TabletSmartphone, badge: `${brands.length}`, category: "CATALOG" },
     { id: "services", label: "Master Services", icon: Wrench, badge: `${serviceList.length}`, category: "CATALOG" },
     { id: "banners", label: "Banners & Advertisements", icon: Megaphone, badge: `${bannerList.length}`, category: "CATALOG" },
+    { id: "used-phones", label: "Used Phones Catalog", icon: Smartphone, badge: null, category: "MARKETPLACE" },
+    { id: "buy-requests", label: "Buy Requests", icon: ShoppingBag, badge: null, category: "MARKETPLACE" },
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, badge: null, category: "MAIN" },
     { id: "repairs", label: "Repairs & Bookings", icon: ClipboardList, badge: `${repairList.length}`, category: "MAIN" },
     { id: "users", label: "Users & Accounts", icon: Users, badge: `${userList.length}`, category: "MANAGEMENT" },
@@ -1317,6 +1322,47 @@ function AdminPage() {
             </p>
             <div className="space-y-1">
               {navItems.filter(item => item.category === "CATALOG").map((item) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id as any);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/70"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary-foreground" : "text-primary"}`} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span
+                        className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${
+                          isActive
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground border border-border"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <p className="px-3 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground mb-2 mt-4">
+              Marketplace
+            </p>
+            <div className="space-y-1">
+              {navItems.filter(item => item.category === "MARKETPLACE").map((item) => {
                 const isActive = activeTab === item.id;
                 return (
                   <button
@@ -1477,6 +1523,8 @@ function AdminPage() {
                 {activeTab === "dashboard" && "Dashboard Overview"}
                 {activeTab === "repairs" && "Repair Orders & Queue"}
                 {activeTab === "users" && "User Accounts & Customer Directory"}
+                {activeTab === "used-phones" && "Used Phones Inventory"}
+                {activeTab === "buy-requests" && "Phone Buy Requests"}
               </h2>
               <p className="hidden sm:block text-xs text-muted-foreground">Fixly Pro Control Center</p>
             </div>
@@ -2133,6 +2181,9 @@ function AdminPage() {
               )}
             </div>
           )}
+
+          {activeTab === "used-phones" && <UsedPhonesTab />}
+          {activeTab === "buy-requests" && <BuyRequestsTab />}
 
           {/* DASHBOARD TAB */}
           {activeTab === "dashboard" && (

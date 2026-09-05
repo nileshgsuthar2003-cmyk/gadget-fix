@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\BannerController;
+use App\Http\Controllers\Api\UsedPhoneController;
 
 /*
 |--------------------------------------------------------------------------
@@ -88,3 +89,20 @@ Route::delete('/repairs/{id}', [RepairController::class, 'destroy']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 });
+
+// ==========================================
+// Used / Refurbished Phones Marketplace
+// ==========================================
+Route::get('/used-phones', [UsedPhoneController::class, 'index']);
+Route::post('/used-phones/{id}/buy', [UsedPhoneController::class, 'submitBuyRequest']);
+
+// Admin Used Phones Management
+Route::get('/admin/used-phones', [UsedPhoneController::class, 'adminIndex']);
+Route::post('/admin/used-phones', [UsedPhoneController::class, 'store']);
+Route::put('/admin/used-phones/{id}', [UsedPhoneController::class, 'update']);
+Route::delete('/admin/used-phones/{id}', [UsedPhoneController::class, 'destroy']);
+
+// Admin Phone Buy Requests
+Route::get('/admin/phone-buy-requests', [UsedPhoneController::class, 'buyRequests']);
+Route::put('/admin/phone-buy-requests/{id}/status', [UsedPhoneController::class, 'updateBuyRequestStatus']);
+

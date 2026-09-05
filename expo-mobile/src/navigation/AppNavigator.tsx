@@ -17,6 +17,8 @@ import RegisterScreen from '../screens/RegisterScreen';
 import MyRepairsScreen from '../screens/MyRepairsScreen';
 import BuyPhonesScreen from '../screens/BuyPhonesScreen';
 import SellPhoneScreen from '../screens/SellPhoneScreen';
+import AdminAddPhoneScreen from '../screens/AdminAddPhoneScreen';
+import AdminBuyRequestsScreen from '../screens/AdminBuyRequestsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -130,6 +132,20 @@ export default function AppNavigator() {
         <Stack.Screen 
           name="SellPhone" 
           component={SellPhoneScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="AdminAddPhone" 
+          component={AdminAddPhoneScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="AdminBuyRequests" 
+          component={AdminBuyRequestsScreen} 
           options={{ 
             headerShown: false,
           }}

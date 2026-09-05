@@ -18,6 +18,8 @@ export type RootStackParamList = {
   RepairDetails: { repairId: string };
   BuyPhones: undefined;
   SellPhone: undefined;
+  AdminAddPhone: undefined;
+  AdminBuyRequests: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

@@ -544,6 +544,108 @@ export const api = {
       };
     }
   },
+
+  // =====================================================
+  //  Used / Refurbished Phones Marketplace
+  // =====================================================
+
+  async getUsedPhones(): Promise<{ success: boolean; phones: ApiUsedPhone[] }> {
+    try {
+      return await request('/used-phones', { method: 'GET' });
+    } catch (err) {
+      return { success: true, phones: [] };
+    }
+  },
+
+  async getAdminUsedPhones(): Promise<{ success: boolean; phones: ApiUsedPhone[] }> {
+    try {
+      return await request('/admin/used-phones', { method: 'GET' });
+    } catch (err) {
+      return { success: true, phones: [] };
+    }
+  },
+
+  async createUsedPhone(params: {
+    brand: string;
+    model: string;
+    storage?: string;
+    color?: string;
+    condition?: string;
+    battery_health?: number;
+    original_price: number;
+    price: number;
+    warranty?: string;
+    description?: string;
+    image_url?: string;
+  }): Promise<{ success: boolean; message?: string; phone?: ApiUsedPhone; error?: string }> {
+    try {
+      return await request('/admin/used-phones', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to create listing' };
+    }
+  },
+
+  async updateUsedPhone(id: number, params: Partial<ApiUsedPhone>): Promise<{ success: boolean; message?: string; phone?: ApiUsedPhone; error?: string }> {
+    try {
+      return await request(`/admin/used-phones/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(params),
+      });
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to update listing' };
+    }
+  },
+
+  async deleteUsedPhone(id: number): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      return await request(`/admin/used-phones/${id}`, {
+        method: 'DELETE',
+      });
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to delete listing' };
+    }
+  },
+
+  async submitBuyRequest(phoneId: number, params: {
+    customer_name: string;
+    customer_phone?: string;
+    customer_email?: string;
+    address?: string;
+    payment_method?: string;
+    user_id?: number;
+    notes?: string;
+  }): Promise<{ success: boolean; message?: string; request?: ApiPhoneBuyRequest; error?: string }> {
+    try {
+      return await request(`/used-phones/${phoneId}/buy`, {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to submit buy request' };
+    }
+  },
+
+  async getBuyRequests(): Promise<{ success: boolean; requests: ApiPhoneBuyRequest[] }> {
+    try {
+      return await request('/admin/phone-buy-requests', { method: 'GET' });
+    } catch (err) {
+      return { success: true, requests: [] };
+    }
+  },
+
+  async updateBuyRequestStatus(id: number, status: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      return await request(`/admin/phone-buy-requests/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      });
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to update status' };
+    }
+  },
 };
 
 export interface ApiBanner {
@@ -558,4 +660,42 @@ export interface ApiBanner {
   is_active: boolean;
   display_order?: number;
 }
+
+export interface ApiUsedPhone {
+  id: number;
+  brand: string;
+  model: string;
+  storage: string;
+  color: string;
+  condition: 'Superb' | 'Good' | 'Fair';
+  battery_health: number;
+  original_price: number;
+  price: number;
+  warranty: string;
+  description?: string;
+  image_url?: string;
+  is_active: boolean;
+  buy_requests_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ApiPhoneBuyRequest {
+  id: number;
+  used_phone_id: number;
+  user_id?: number;
+  customer_name: string;
+  customer_phone?: string;
+  customer_email?: string;
+  address?: string;
+  payment_method: 'upi' | 'cod' | 'card';
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+  total_amount: number;
+  notes?: string;
+  used_phone?: ApiUsedPhone;
+  user?: UserProfile;
+  created_at?: string;
+  updated_at?: string;
+}
+
 
