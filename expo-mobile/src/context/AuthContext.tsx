@@ -7,12 +7,20 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<AuthResponse>;
-  register: (params: {
+  registerSendOtp: (params: {
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
     password: string;
+  }) => Promise<{ success: boolean; message?: string; error?: string; debug_otp?: string }>;
+  registerVerifyOtp: (params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+    otp: string;
   }) => Promise<AuthResponse>;
   logout: () => void;
   updateUser: (updatedUser: Partial<UserProfile>) => void;
@@ -24,7 +32,8 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: false,
   login: async () => ({ success: false }),
-  register: async () => ({ success: false }),
+  registerSendOtp: async () => ({ success: false }),
+  registerVerifyOtp: async () => ({ success: false }),
   logout: () => {},
   updateUser: () => {},
 });
@@ -121,7 +130,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         login,
-        register,
+        registerSendOtp,
+        registerVerifyOtp,
         logout,
         updateUser,
       }}

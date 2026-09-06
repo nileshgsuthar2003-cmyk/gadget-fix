@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, 
-  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator 
+  KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Wrench, User, Mail, Lock, Eye, EyeOff, ChevronDown } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function RegisterScreen({ navigation }: RootStackScreenProps<'Register'>) {
   const { theme, isDark } = useTheme();
-  const { register, isLoading } = useAuth();
+  const { registerSendOtp, registerVerifyOtp, isLoading } = useAuth();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -21,6 +21,11 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // OTP State
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -44,7 +49,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
       return;
     }
 
-    const res = await register({
+    const res = await registerSendOtp({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
@@ -53,13 +58,41 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
     });
 
     if (res.success) {
+      setShowOtpModal(true);
+      if (res.debug_otp) {
+        Alert.alert('Verification Code (Dev Mode)', `OTP: ${res.debug_otp}`);
+      }
+    } else {
+      Alert.alert('Registration Failed', res.error || 'Unable to send verification code.');
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit verification code.');
+      return;
+    }
+
+    setIsVerifying(true);
+    const res = await registerVerifyOtp({
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      password,
+      otp,
+    });
+    setIsVerifying(false);
+
+    if (res.success) {
+      setShowOtpModal(false);
       Alert.alert(
         'Account Created! 🎉',
         `Welcome to Cell Care, ${firstName}! Your account is now active.`,
         [{ text: 'Get Started', onPress: () => navigation.replace('Tabs', { screen: 'Home' }) }]
       );
     } else {
-      Alert.alert('Registration Failed', res.error || 'Unable to register account.');
+      Alert.alert('Verification Failed', res.error || 'Invalid OTP.');
     }
   };
 
@@ -226,6 +259,56 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* OTP Verification Modal */}
+      <Modal visible={showOtpModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.modalContent}
+          >
+            <View style={[styles.modalBox, { backgroundColor: theme.surface }]}>
+              <View style={[styles.modalIconContainer, { backgroundColor: theme.primarySoft }]}>
+                <Mail size={32} color={theme.primary} />
+              </View>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Verification Required</Text>
+              <Text style={[styles.modalText, { color: theme.textSecondary }]}>
+                We've sent a 6-digit verification code to {email}. Please enter it below to verify your account.
+              </Text>
+              
+              <TextInput
+                style={[styles.otpInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+                placeholder="Enter 6-digit OTP"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="number-pad"
+                maxLength={6}
+                value={otp}
+                onChangeText={setOtp}
+              />
+
+              <TouchableOpacity 
+                style={[styles.primaryButton, { width: '100%' }]} 
+                onPress={handleVerifyOtp}
+                disabled={isVerifying || otp.length !== 6}
+              >
+                {isVerifying ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Verify & Create Account</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.cancelButton} 
+                onPress={() => setShowOtpModal(false)}
+                disabled={isVerifying}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -346,5 +429,63 @@ const styles = StyleSheet.create({
   termsText: {
     textAlign: 'center',
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+  },
+  modalBox: {
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  otpInput: {
+    width: '100%',
+    height: 56,
+    borderWidth: 1,
+    borderRadius: 14,
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 4,
+    marginBottom: 20,
+  },
+  cancelButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   }
 });
