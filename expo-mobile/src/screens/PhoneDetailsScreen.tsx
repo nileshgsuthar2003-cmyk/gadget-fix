@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   ChevronLeft, Smartphone, ShieldCheck, BatteryCharging, 
-  Check, X, Truck, CreditCard, Sparkles 
+  Check, X, Truck, CreditCard, Sparkles, Home as HomeIcon, Building2, MapPin
 } from 'lucide-react-native';
 import { api, BACKEND_URL } from '../lib/api';
 import { RootStackScreenProps } from '../navigation/types';
@@ -25,7 +25,10 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
   const { user } = useAuth();
   
   const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [address, setAddress] = useState<string>(user?.addresses?.[0]?.line || '');
+  
+  const userSavedAddresses = user?.addresses || [];
+  const [addressId, setAddressId] = useState<string>(userSavedAddresses.length > 0 ? userSavedAddresses[0].id : '');
+  
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('upi');
   const [submitting, setSubmitting] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -40,13 +43,20 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
       ]);
       return;
     }
+    if (!addressId) {
+      Alert.alert("Address Required", "Please select a delivery address.");
+      return;
+    }
     setSubmitting(true);
     try {
+      const selectedAddr = userSavedAddresses.find(a => a.id === addressId);
+      const addressString = selectedAddr ? (selectedAddr.line || [(selectedAddr as any).flat, (selectedAddr as any).street, (selectedAddr as any).landmark, `${(selectedAddr as any).city || ''} ${(selectedAddr as any).pincode || ''}`].filter(Boolean).join(', ')) : '';
+
       const res = await api.submitBuyRequest(phone.id, {
         customer_name: user.name || `${user.first_name} ${user.last_name}`,
         customer_phone: user.phone,
         customer_email: user.email,
-        address,
+        address: addressString,
         payment_method: paymentMethod,
         user_id: user.id,
       });
@@ -219,16 +229,54 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
 
               {/* Delivery Address */}
               <Text style={[styles.modalSectionLabel, { color: theme.text }]}>Delivery Address</Text>
-              <View style={[styles.modalAddressBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-                <Truck size={18} color={theme.primary} style={{ marginRight: 8, marginTop: 2 }} />
-                <TextInput
-                  style={[{ flex: 1, fontSize: 13, color: theme.text, padding: 0 }]}
-                  placeholder="Enter delivery address"
-                  placeholderTextColor={theme.textMuted}
-                  value={address}
-                  onChangeText={setAddress}
-                />
-              </View>
+              
+              {userSavedAddresses.length === 0 ? (
+                <View style={{ alignItems: 'center', padding: 20, backgroundColor: theme.surface, borderRadius: 16, borderWidth: 1, borderColor: theme.cardBorder, marginBottom: 16 }}>
+                  <MapPin size={28} color={theme.textMuted} style={{ marginBottom: 8 }} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 }}>No Saved Addresses</Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', marginBottom: 12 }}>Please add a delivery address in your profile to proceed.</Text>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); navigation.navigate('Profile'); }} style={{ backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Go to Profile</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ gap: 8, marginBottom: 16 }}>
+                  {userSavedAddresses.map(a => {
+                    const IconComp = a.type === 'Home' ? HomeIcon : (a.type === 'Office' ? Building2 : MapPin);
+                    const isSelected = addressId === a.id;
+                    const displayLine = a.line || [(a as any).flat, (a as any).street, (a as any).landmark, `${(a as any).city || ''} ${(a as any).pincode || ''}`].filter(Boolean).join(', ');
+
+                    return (
+                      <TouchableOpacity
+                        key={a.id}
+                        style={[
+                          { flexDirection: 'row', padding: 12, borderRadius: 14, borderWidth: 1, backgroundColor: theme.background, borderColor: theme.cardBorder, alignItems: 'flex-start' },
+                          isSelected && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
+                        ]}
+                        onPress={() => setAddressId(a.id)}
+                        activeOpacity={0.7}
+                      >
+                        <IconComp size={20} color={isSelected ? theme.primary : theme.textSecondary} style={{ marginTop: 2 }} />
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[
+                              { fontSize: 14, fontWeight: '700', color: theme.text },
+                              isSelected && { color: theme.primary }
+                            ]}>{a.type}</Text>
+                            {a.is_default && (
+                              <View style={{ backgroundColor: theme.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>DEFAULT</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text style={[{ fontSize: 12, lineHeight: 18, marginTop: 4, color: theme.textSecondary }]}>{displayLine}</Text>
+                        </View>
+                        {isSelected && <Check size={20} color={theme.primary} />}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
 
               {/* Payment Method */}
               <Text style={[styles.modalSectionLabel, { color: theme.text }]}>Payment Method</Text>

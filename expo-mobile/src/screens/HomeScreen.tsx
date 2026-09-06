@@ -12,7 +12,7 @@ import {
 } from 'lucide-react-native';
 import Card from '../components/Card';
 import { inr } from '../lib/data';
-import { api, ApiBanner, API_BASE_URL } from '../lib/api';
+import { api, ApiBanner, API_BASE_URL, BACKEND_URL } from '../lib/api';
 import { HomeTabScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -26,14 +26,16 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
 
   const [liveServices, setLiveServices] = useState<any[]>([]);
   const [liveBanners, setLiveBanners] = useState<ApiBanner[]>([]);
+  const [livePhones, setLivePhones] = useState<any[]>([]);
   const [loadingServices, setLoadingServices] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchHomeData = async () => {
     try {
-      const [servicesRes, bannersRes] = await Promise.allSettled([
+      const [servicesRes, bannersRes, phonesRes] = await Promise.allSettled([
         api.getServices(),
         api.getBanners(),
+        api.getUsedPhones(),
       ]);
 
       if (servicesRes.status === 'fulfilled' && Array.isArray(servicesRes.value?.services)) {
@@ -47,9 +49,16 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
       } else {
         setLiveBanners([]);
       }
+
+      if (phonesRes.status === 'fulfilled' && Array.isArray(phonesRes.value?.phones)) {
+        setLivePhones(phonesRes.value.phones.slice(0, 10));
+      } else {
+        setLivePhones([]);
+      }
     } catch (err) {
       setLiveServices([]);
       setLiveBanners([]);
+      setLivePhones([]);
     } finally {
       setLoadingServices(false);
       setRefreshing(false);
@@ -285,6 +294,48 @@ export default function HomeScreen({ navigation }: HomeTabScreenProps<'Home'>) {
             </ScrollView>
           )}
         </View>
+
+        {/* Top 10 Used Phones */}
+        {livePhones.length > 0 && (
+          <View style={[styles.section, { marginTop: 12 }]}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Buy Used Phones</Text>
+              <TouchableOpacity onPress={() => (navigation as any).navigate('BuyPhones')}>
+                <Text style={[styles.seeAllText, { color: theme.primary }]}>See All →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularScroll}>
+              {livePhones.map((phone, index) => (
+                <TouchableOpacity 
+                  key={phone.id} 
+                  onPress={() => (navigation as any).navigate('PhoneDetails', { phone })}
+                  activeOpacity={0.8}
+                >
+                  <Card style={[styles.popularCard, { width: 140, padding: 12 }, index === 0 && { marginLeft: 0 }]}>
+                    {phone.images && phone.images.length > 0 ? (
+                      <Image 
+                        source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `${BACKEND_URL}${phone.images[0]}` }} 
+                        style={{ width: '100%', height: 110, borderRadius: 10, marginBottom: 8 }} 
+                      />
+                    ) : (
+                      <Image 
+                        source={{ uri: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800&auto=format&fit=crop' }} 
+                        style={{ width: '100%', height: 110, borderRadius: 10, marginBottom: 8 }} 
+                      />
+                    )}
+                    <Text style={[styles.popularName, { color: theme.text, fontSize: 13, marginBottom: 4, lineHeight: 18 }]} numberOfLines={2}>
+                      {phone.brand} {phone.model}
+                    </Text>
+                    <Text style={{ color: theme.primary, fontWeight: '800', fontSize: 15 }}>
+                      {inr(phone.price)}
+                    </Text>
+                  </Card>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
 
       </ScrollView>

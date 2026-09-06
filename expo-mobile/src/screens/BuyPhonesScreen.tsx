@@ -357,6 +357,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 14,
   },
+  productImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    marginRight: 14,
+  },
   productMainInfo: {
     flex: 1,
   },
