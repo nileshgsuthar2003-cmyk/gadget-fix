@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, UserProfile, AuthResponse } from '../lib/api';
+
+const AUTH_STORAGE_KEY = 'cellcare_auth_session';
+
+interface StoredSession {
+  user: UserProfile;
+  token: string;
+}
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -43,17 +51,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Initialize from live database session on startup
+  // Save session to AsyncStorage whenever user/token changes
+  const saveSession = async (userData: UserProfile | null, authToken: string | null) => {
+    try {
+      if (userData && authToken) {
+        await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user: userData, token: authToken }));
+      } else {
+        await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
+      }
+    } catch (e) {
+      // Storage error, ignore silently
+    }
+  };
+
+  // Initialize: restore session from AsyncStorage, then verify with server
   useEffect(() => {
     const initAuth = async () => {
       try {
+        // Step 1: Restore cached session instantly (fast startup)
+        const stored = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
+        if (stored) {
+          const session: StoredSession = JSON.parse(stored);
+          if (session.user && session.token) {
+            setUser(session.user);
+            setToken(session.token);
+          }
+        }
+
+        // Step 2: Verify with server to get fresh data
         const res = await api.getMe();
         if (res && res.success && res.user) {
           setUser(res.user);
-          setToken('live-session-token');
+          if (!token) setToken('live-session-token');
+          await saveSession(res.user, 'live-session-token');
         }
       } catch (err) {
-        // Not logged in or server offline
+        // Server offline — keep using cached session if available
       } finally {
         setIsLoading(false);
       }
@@ -68,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.success && res.user) {
         setUser(res.user);
         setToken(res.token || null);
+        await saveSession(res.user, res.token || 'live-session-token');
       }
       return res;
     } finally {
@@ -104,6 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.success && res.user) {
         setUser(res.user);
         setToken(res.token || null);
+        await saveSession(res.user, res.token || 'live-session-token');
       }
       return res;
     } finally {
@@ -111,14 +146,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     setToken(null);
+    await saveSession(null, null);
   };
 
   const updateUser = (updated: Partial<UserProfile>) => {
     if (user) {
-      setUser({ ...user, ...updated });
+      const newUser = { ...user, ...updated };
+      setUser(newUser);
+      saveSession(newUser, token);
     }
   };
 
