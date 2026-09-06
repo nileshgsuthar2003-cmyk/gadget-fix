@@ -294,13 +294,12 @@ export const timeSlots = [
 export function getUpcomingDays(count = 7) {
   const days = [];
   const today = new Date();
-  for (let i = 0; i < count; i++) {
+  for (let i = 1; i <= count; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
 
     let label = "";
-    if (i === 0) label = "Today";
-    else if (i === 1) label = "Tomorrow";
+    if (i === 1) label = "Tomorrow";
     else {
       label = d.toLocaleDateString("en-US", { weekday: "short" });
     }

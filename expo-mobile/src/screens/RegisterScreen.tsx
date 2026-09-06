@@ -310,7 +310,11 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
               />
 
               <TouchableOpacity 
-                style={[styles.primaryButton, { width: '100%' }]} 
+                style={[
+                  styles.primaryButton, 
+                  { width: '100%', backgroundColor: theme.primary },
+                  (isVerifying || otp.length !== 6) && { opacity: 0.5 },
+                ]} 
                 onPress={handleVerifyOtp}
                 disabled={isVerifying || otp.length !== 6}
               >
