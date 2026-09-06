@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, 
-  TextInput, Modal, ActivityIndicator, RefreshControl, KeyboardAvoidingView, Platform, Switch
+  TextInput, Modal, ActivityIndicator, RefreshControl, KeyboardAvoidingView, Platform, Switch, Image
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronRight,
@@ -52,12 +53,23 @@ export default function ProfileScreen() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [email, setEmail] = useState(user?.email || '');
   const [newPassword, setNewPassword] = useState('');
+  const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatar || null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // Address Management States
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [addressViewMode, setAddressViewMode] = useState<'list' | 'form'>('list');
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+
+  // Custom Alert State for Responses
+  const [alertData, setAlertData] = useState<{visible: boolean; title: string; message: string; type: 'success'|'error'|'info'}>({
+    visible: false, title: '', message: '', type: 'info'
+  });
+  
+  const showAlert = (title: string, message: string, type: 'success'|'error'|'info' = 'info') => {
+    setAlertData({ visible: true, title, message, type });
+  };
   const [addrType, setAddrType] = useState<'Home' | 'Office' | 'Other'>('Home');
   const [addrCustomTag, setAddrCustomTag] = useState('');
   const [addrFlat, setAddrFlat] = useState('');
@@ -127,6 +139,7 @@ export default function ProfileScreen() {
         last_name: lastName.trim(),
         phone: phone.trim(),
         email: email.trim(),
+        avatar: avatarUri || undefined,
       };
 
       if (newPassword.trim()) {
@@ -139,12 +152,12 @@ export default function ProfileScreen() {
         updateUser(res.user);
         setIsEditModalOpen(false);
         setNewPassword('');
-        Alert.alert('Success 🎉', 'Profile information updated successfully in database!');
+        showAlert('Success 🎉', 'Profile information updated successfully in database!', 'success');
       } else {
-        Alert.alert('Update Failed', res?.error || 'Could not update profile details.');
+        showAlert('Update Failed', res?.error || 'Could not update profile details.', 'error');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update profile.');
+      showAlert('Error', err.message || 'Failed to update profile.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -221,12 +234,12 @@ export default function ProfileScreen() {
         updateUser({ addresses: res.addresses });
         setAddressViewMode('list');
         resetAddressForm();
-        Alert.alert('Success 🎉', editingAddressId ? 'Address updated successfully!' : 'New address saved to your profile!');
+        showAlert('Success 🎉', editingAddressId ? 'Address updated successfully!' : 'New address saved to your profile!', 'success');
       } else {
-        Alert.alert('Save Failed', res?.error || 'Could not save address.');
+        showAlert('Save Failed', res?.error || 'Could not save address.', 'error');
       }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to save address.');
+      showAlert('Error', err?.message || 'Failed to save address.', 'error');
     } finally {
       setIsSavingAddress(false);
     }
@@ -321,8 +334,60 @@ export default function ProfileScreen() {
         
         {/* Dynamic Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={[styles.avatarCircle, { backgroundColor: theme.primary }]}>
-            <Text style={styles.avatarLetter}>{customerFullName.charAt(0).toUpperCase()}</Text>
+          <View style={{ position: 'relative' }}>
+            <View style={[styles.avatarCircle, { backgroundColor: theme.primary, overflow: 'hidden' }]}>
+              {user?.avatar || avatarUri ? (
+                <Image source={{ uri: user?.avatar || avatarUri! }} style={{ width: 80, height: 80 }} />
+              ) : (
+                <Text style={styles.avatarLetter}>{customerFullName.charAt(0).toUpperCase()}</Text>
+              )}
+            </View>
+            <TouchableOpacity 
+              style={[styles.editAvatarBtn, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}
+              onPress={async () => {
+                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (permissionResult.granted === false) {
+                  Alert.alert("Permission required", "You've refused to allow this app to access your photos!");
+                  return;
+                }
+                const pickerResult = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: true,
+                  aspect: [1, 1],
+                  quality: 0.5,
+                  base64: true,
+                });
+                if (!pickerResult.canceled && pickerResult.assets[0]) {
+                  setIsUploading(true);
+                  const base64Img = `data:image/jpeg;base64,${pickerResult.assets[0].base64}`;
+                  const uploadRes = await api.uploadImage(base64Img, true);
+                  setIsUploading(false);
+                  
+                  if (uploadRes.success && uploadRes.full_url) {
+                    setAvatarUri(uploadRes.full_url);
+                    // Automatically save profile with new avatar
+                    api.updateProfile({ 
+                      first_name: user?.first_name || '', 
+                      last_name: user?.last_name || '', 
+                      avatar: uploadRes.full_url 
+                    }).then(res => {
+                      if (res.success && res.user) {
+                        updateUser(res.user);
+                        showAlert('Success', 'Profile picture updated!', 'success');
+                      }
+                    });
+                  } else {
+                    showAlert('Upload Failed', uploadRes.error || 'Could not upload image', 'error');
+                  }
+                }
+              }}
+            >
+              {isUploading ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : (
+                <Edit2 size={12} color={theme.primary} />
+              )}
+            </TouchableOpacity>
           </View>
 
           <Text style={[styles.profileName, { color: theme.text }]}>{customerFullName}</Text>
@@ -847,6 +912,25 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* ---------- CUSTOM RESPONSE ALERT ---------- */}
+      <Modal visible={alertData.visible} transparent animationType="fade">
+        <View style={styles.alertBackdrop}>
+          <View style={[styles.alertBox, { backgroundColor: theme.surface, borderColor: alertData.type === 'success' ? '#10b981' : alertData.type === 'error' ? '#ef4444' : theme.primary }]}>
+            <View style={[styles.alertIconBox, { backgroundColor: alertData.type === 'success' ? '#d1fae5' : alertData.type === 'error' ? '#fee2e2' : theme.primarySoft }]}>
+              {alertData.type === 'success' ? <CheckCircle2 size={32} color="#10b981" /> : alertData.type === 'error' ? <X size={32} color="#ef4444" /> : <HelpCircle size={32} color={theme.primary} />}
+            </View>
+            <Text style={[styles.alertTitle, { color: theme.text }]}>{alertData.title}</Text>
+            <Text style={[styles.alertMessage, { color: theme.textSecondary }]}>{alertData.message}</Text>
+            <TouchableOpacity 
+              style={[styles.alertBtn, { backgroundColor: alertData.type === 'success' ? '#10b981' : alertData.type === 'error' ? '#ef4444' : theme.primary }]} 
+              onPress={() => setAlertData({ ...alertData, visible: false })}
+            >
+              <Text style={styles.alertBtnText}>Okay</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -872,6 +956,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+  },
+  editAvatarBtn: {
+    position: 'absolute',
+    bottom: 5,
+    right: -5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
   },
   avatarLetter: {
     fontSize: 28,
@@ -1235,4 +1335,58 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  
+  // Custom Alert Styles
+  alertBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  alertBox: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  alertIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  alertMessage: {
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  alertBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 100,
+    width: '100%',
+    alignItems: 'center',
+  },
+  alertBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  }
 });
