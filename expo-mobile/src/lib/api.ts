@@ -23,6 +23,8 @@ export const API_BASE_URL =
   }) ||
   `http://${DEV_LAN_IP}:8000/api`;
 
+export const BACKEND_URL = API_BASE_URL.replace('/api', '');
+
 export interface UserAddress {
   id: string;
   type: 'Home' | 'Office' | 'Other' | string;

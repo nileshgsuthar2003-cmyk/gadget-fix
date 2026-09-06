@@ -8,7 +8,7 @@ import {
   ChevronLeft, Smartphone, ShieldCheck, BatteryCharging, 
   Check, X, Truck, CreditCard, Sparkles 
 } from 'lucide-react-native';
-import { api } from '../lib/api';
+import { api, BACKEND_URL } from '../lib/api';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -95,15 +95,16 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
               {phone.images.map((img, index) => (
                 <Image 
                   key={index}
-                  source={{ uri: img.startsWith('http') ? img : `http://127.0.0.1:8000${img}` }}
+                  source={{ uri: img.startsWith('http') ? img : `${BACKEND_URL}${img}` }}
                   style={{ width, height: 300, resizeMode: 'contain' }}
                 />
               ))}
             </ScrollView>
           ) : (
-            <View style={[styles.placeholderImage, { backgroundColor: theme.primarySoft }]}>
-              <Smartphone size={80} color={theme.primary} />
-            </View>
+            <Image 
+              source={{ uri: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800&auto=format&fit=crop' }} 
+              style={{ width, height: 300, resizeMode: 'cover' }} 
+            />
           )}
           
           {phone.images && phone.images.length > 1 && (
@@ -200,11 +201,14 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
               <View style={[styles.modalItemCard, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
                 {phone.images && phone.images.length > 0 ? (
                   <Image 
-                    source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `http://127.0.0.1:8000${phone.images[0]}` }}
+                    source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `${BACKEND_URL}${phone.images[0]}` }}
                     style={{ width: 48, height: 48, borderRadius: 12 }}
                   />
                 ) : (
-                  <Smartphone size={28} color={theme.primary} />
+                  <Image 
+                    source={{ uri: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800&auto=format&fit=crop' }} 
+                    style={{ width: 48, height: 48, borderRadius: 12 }} 
+                  />
                 )}
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <Text style={[styles.modalItemTitle, { color: theme.text }]}>{phone.brand} {phone.model}</Text>

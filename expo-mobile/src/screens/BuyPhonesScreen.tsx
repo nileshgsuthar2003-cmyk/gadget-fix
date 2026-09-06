@@ -9,7 +9,7 @@ import {
   Check, X, Truck, CreditCard, Sparkles, Tag, Package
 } from 'lucide-react-native';
 import Card from '../components/Card';
-import { api, ApiUsedPhone } from '../lib/api';
+import { api, ApiUsedPhone, BACKEND_URL } from '../lib/api';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -86,16 +86,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
 
       <ScrollView style={styles.container} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}>
         
-        {/* Banner */}
-        <View style={[styles.trustBanner, { backgroundColor: theme.primarySoft, borderColor: theme.cardBorder }]}>
-          <View style={styles.trustBannerHeader}>
-            <Sparkles size={20} color={theme.primary} />
-            <Text style={[styles.trustBannerTitle, { color: theme.primary }]}>Fixly Certified Refurbished</Text>
-          </View>
-          <Text style={[styles.trustBannerSubtitle, { color: theme.textSecondary }]}>
-            • 32 Quality Checks Passed  • 6 Months Warranty  • 7 Days Replacement
-          </Text>
-        </View>
+        {/* Banner Removed */}
 
         {/* Search Input */}
         <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.cardBorder }]}>
@@ -176,13 +167,14 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                 <View style={styles.productTopRow}>
                   {phone.images && phone.images.length > 0 ? (
                     <Image 
-                      source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `http://127.0.0.1:8000${phone.images[0]}` }} 
-                      style={styles.phoneIconBox} 
+                      source={{ uri: phone.images[0].startsWith('http') ? phone.images[0] : `${BACKEND_URL}${phone.images[0]}` }} 
+                      style={styles.productImage} 
                     />
                   ) : (
-                    <View style={[styles.phoneIconBox, { backgroundColor: theme.primarySoft }]}>
-                      <Smartphone size={32} color={theme.primary} />
-                    </View>
+                    <Image 
+                      source={{ uri: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800&auto=format&fit=crop' }} 
+                      style={styles.productImage} 
+                    />
                   )}
                   <View style={styles.productMainInfo}>
                     <View style={styles.badgeRow}>
