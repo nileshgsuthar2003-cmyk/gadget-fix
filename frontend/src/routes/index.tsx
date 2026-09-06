@@ -5,13 +5,13 @@ import { Wrench } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Fixly — Fast, Reliable, Trusted Mobile Repair" },
+      { title: "Cell Care — Fast, Reliable, Trusted Mobile Repair" },
       {
         name: "description",
         content:
           "Book doorstep or in-store mobile phone repairs, track your repair live, approve estimates and pay securely — all in one app.",
       },
-      { property: "og:title", content: "Fixly — Mobile Repair Service" },
+      { property: "og:title", content: "Cell Care — Mobile Repair Service" },
       {
         property: "og:description",
         content: "Fast. Reliable. Trusted Mobile Repair. Book, track and pay for phone repairs in one app.",
@@ -38,7 +38,7 @@ function Splash() {
         </div>
       </div>
       <h1 className="animate-rise-in mt-8 text-4xl font-extrabold tracking-tight text-primary-foreground">
-        Fixly
+        Cell Care
       </h1>
       <p className="animate-rise-in mt-2 text-center text-sm font-medium text-primary-foreground/80 [animation-delay:150ms]">
         Fast. Reliable. Trusted Mobile Repair.

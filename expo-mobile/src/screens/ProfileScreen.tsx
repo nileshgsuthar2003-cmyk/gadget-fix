@@ -288,7 +288,7 @@ export default function ProfileScreen() {
   const handleLogout = () => {
     Alert.alert(
       "Log Out",
-      "Are you sure you want to log out of Fixly?",
+      "Are you sure you want to log out of Cell Care?",
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -412,8 +412,8 @@ export default function ProfileScreen() {
             <TouchableOpacity 
               style={styles.menuRow}
               onPress={() => Alert.alert(
-                'Fixly Customer Care 📞',
-                'Toll-Free Helpline: 1800-FIX-PHONE (1800-349-7466)\nDirect Support: +91 98765 43210\nEmail: support@fixly.com\nHours: 9:00 AM – 9:00 PM (All 7 Days)'
+                'Cell Care Customer Care 📞',
+                'Toll-Free Helpline: 1800-FIX-PHONE (1800-349-7466)\nDirect Support: +91 98765 43210\nEmail: support@cellcare.com\nHours: 9:00 AM – 9:00 PM (All 7 Days)'
               )}
               activeOpacity={0.7}
             >
@@ -442,7 +442,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <Text style={[styles.cleanFooter, { color: theme.textMuted }]}>Fixly Mobile App • Connected to Live Cloud</Text>
+        <Text style={[styles.cleanFooter, { color: theme.textMuted }]}>Cell Care Mobile App • Connected to Live Cloud</Text>
 
       </ScrollView>
 

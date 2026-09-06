@@ -18,7 +18,7 @@ return new class extends Migration
             $table->integer('battery_health')->default(90);
             $table->decimal('original_price', 10, 2)->default(0);
             $table->decimal('price', 10, 2)->default(0);
-            $table->string('warranty')->default('6 Months Fixly Warranty');
+            $table->string('warranty')->default('6 Months Cell Care Warranty');
             $table->text('description')->nullable();
             $table->string('image_url')->nullable();
             $table->boolean('is_active')->default(true);

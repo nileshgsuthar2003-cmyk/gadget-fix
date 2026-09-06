@@ -12,7 +12,7 @@ use App\Http\Controllers\Api\UsedPhoneController;
 
 /*
 |--------------------------------------------------------------------------
-| Fixly API Routes
+| Cell Care API Routes
 |--------------------------------------------------------------------------
 */
 
@@ -23,7 +23,8 @@ Route::post('/upload', [UploadController::class, 'upload']);
 Route::get('/banners', [BannerController::class, 'index']);
 
 // Public Auth Endpoints
-Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/register/send-otp', [AuthController::class, 'registerSendOtp']);
+Route::post('/auth/register/verify-otp', [AuthController::class, 'registerVerifyOtp']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/admin-login', [AuthController::class, 'adminLogin']);
 Route::get('/auth/me', [AuthController::class, 'me']);

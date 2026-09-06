@@ -38,7 +38,7 @@ export default function AdminAddPhoneScreen({ navigation }: RootStackScreenProps
   const [batteryHealth, setBatteryHealth] = useState('90');
   const [originalPrice, setOriginalPrice] = useState('');
   const [price, setPrice] = useState('');
-  const [warranty, setWarranty] = useState('6 Months Fixly Warranty');
+  const [warranty, setWarranty] = useState('6 Months Cell Care Warranty');
   const [description, setDescription] = useState('');
 
   const fetchPhones = useCallback(async () => {
@@ -73,7 +73,7 @@ export default function AdminAddPhoneScreen({ navigation }: RootStackScreenProps
     setBatteryHealth('90');
     setOriginalPrice('');
     setPrice('');
-    setWarranty('6 Months Fixly Warranty');
+    setWarranty('6 Months Cell Care Warranty');
     setDescription('');
     setEditingPhone(null);
   };
@@ -467,7 +467,7 @@ export default function AdminAddPhoneScreen({ navigation }: RootStackScreenProps
                 <Text style={[styles.formLabel, { color: theme.textSecondary }]}>Warranty</Text>
                 <TextInput
                   style={[styles.formInput, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text, marginBottom: 14 }]}
-                  placeholder="6 Months Fixly Warranty"
+                  placeholder="6 Months Cell Care Warranty"
                   placeholderTextColor={theme.textMuted}
                   value={warranty}
                   onChangeText={setWarranty}

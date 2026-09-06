@@ -55,7 +55,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
     if (res.success) {
       Alert.alert(
         'Account Created! 🎉',
-        `Welcome to Fixly, ${firstName}! Your account is now active.`,
+        `Welcome to Cell Care, ${firstName}! Your account is now active.`,
         [{ text: 'Get Started', onPress: () => navigation.replace('Tabs', { screen: 'Home' }) }]
       );
     } else {
@@ -85,7 +85,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
 
           <Text style={[styles.title, { color: theme.text }]}>Create Account</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Join Fixly to book, manage, and track your mobile phone repairs instantly.
+            Join Cell Care to book, manage, and track your mobile phone repairs instantly.
           </Text>
 
           <View style={styles.formContainer}>
@@ -221,7 +221,7 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
 
           <View style={{ height: 24 }} />
           <Text style={[styles.termsText, { color: theme.textMuted }]}>
-            By registering you agree to Fixly's <Text style={{ color: theme.primary }}>Terms</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>.
+            By registering you agree to Cell Care's <Text style={{ color: theme.primary }}>Terms</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>.
           </Text>
 
         </ScrollView>

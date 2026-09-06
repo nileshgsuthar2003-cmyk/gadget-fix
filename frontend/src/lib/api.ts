@@ -1,9 +1,9 @@
-// Fixly API Client connecting frontend with Laravel Backend
+// Cell Care API Client connecting frontend with Laravel Backend
 
 export const API_BASE_URL: string = (import.meta.env['VITE_API_BASE_URL'] as string) || "http://127.0.0.1:8000/api";
 
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("fixly_admin_token") : null;
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("cellcare_admin_token") : null;
   
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -287,7 +287,7 @@ export const api = {
     }
     const formData = new FormData();
     formData.append("file", fileOrBase64);
-    const token = typeof window !== "undefined" ? sessionStorage.getItem("fixly_admin_token") : null;
+    const token = typeof window !== "undefined" ? sessionStorage.getItem("cellcare_admin_token") : null;
     const res = await fetch(`${API_BASE_URL}/upload`, {
       method: "POST",
       body: formData,

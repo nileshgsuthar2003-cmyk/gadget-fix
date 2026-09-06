@@ -160,7 +160,7 @@ class UserController extends Controller
             return response()->json(['success' => false, 'error' => 'User not found.'], 404);
         }
 
-        if ($user->email === 'admin@gmail.com' || $user->email === 'admin@fixly.com') {
+        if ($user->email === 'admin@gmail.com' || $user->email === 'admin@cellcare.com') {
             return response()->json(['success' => false, 'error' => 'Super Admin account cannot be deleted.'], 403);
         }
 

@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Fixly design system — premium mobile repair service.
+ * Cell Care design system — premium mobile repair service.
  * Deep indigo primary, light blue secondary, semantic status colors,
  * off-white background, white cards, dark charcoal text.
  */
@@ -67,9 +67,9 @@
   --card-foreground: oklch(0.25 0.03 268);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.03 268);
-  --primary: oklch(0.48 0.2 278);
-  --primary-foreground: oklch(0.985 0.005 278);
-  --primary-soft: oklch(0.945 0.025 278);
+  --primary: oklch(0.55 0.18 250);
+  --primary-foreground: oklch(0.985 0.005 250);
+  --primary-soft: oklch(0.95 0.03 250);
   --secondary: oklch(0.935 0.03 255);
   --secondary-foreground: oklch(0.42 0.12 272);
   --muted: oklch(0.955 0.008 264);
@@ -89,8 +89,8 @@
   --info-soft: oklch(0.945 0.03 250);
   --border: oklch(0.915 0.012 264);
   --input: oklch(0.915 0.012 264);
-  --ring: oklch(0.48 0.2 278);
-  --chart-1: oklch(0.48 0.2 278);
+  --ring: oklch(0.55 0.18 250);
+  --chart-1: oklch(0.55 0.18 250);
   --chart-2: oklch(0.65 0.15 220);
   --chart-3: oklch(0.6 0.15 160);
   --chart-4: oklch(0.7 0.16 60);

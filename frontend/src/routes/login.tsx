@@ -9,8 +9,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Sign In / Register — Fixly" },
-      { name: "description", content: "Sign in to Fixly with your email and password to book and track phone repairs." },
+      { title: "Sign In / Register — Cell Care" },
+      { name: "description", content: "Sign in to Cell Care with your email and password to book and track phone repairs." },
     ],
   }),
   component: Login,
@@ -22,7 +22,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Login form state
-  const [loginEmail, setLoginEmail] = useState("rahul@fixly.com");
+  const [loginEmail, setLoginEmail] = useState("rahul@cellcare.com");
   const [loginPassword, setLoginPassword] = useState("password123");
 
   // Register form state
@@ -58,7 +58,7 @@ function Login() {
       toast.error("Please fill in all registration fields");
       return;
     }
-    toast.success(`Account created for ${firstName} ${lastName}! Welcome to Fixly.`);
+    toast.success(`Account created for ${firstName} ${lastName}! Welcome to Cell Care.`);
     navigate({ to: "/home" });
   };
 
@@ -163,7 +163,7 @@ function Login() {
               <h1 className="text-xl font-extrabold text-foreground">
                 {tab === "login" ? "Welcome Back" : "Create Account"}
               </h1>
-              <p className="text-xs text-muted-foreground">Fixly Device Care & Marketplace</p>
+              <p className="text-xs text-muted-foreground">Cell Care Device Care & Marketplace</p>
             </div>
           </div>
 
@@ -247,7 +247,7 @@ function Login() {
               </div>
 
               <Button type="submit" className="w-full h-11 rounded-xl text-xs font-bold mt-2">
-                Sign In to Fixly
+                Sign In to Cell Care
               </Button>
             </form>
           ) : (

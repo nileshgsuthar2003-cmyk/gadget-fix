@@ -31,10 +31,10 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/book")({
   head: () => ({
     meta: [
-      { title: "Book a Repair — Fixly" },
+      { title: "Book a Repair — Cell Care" },
       { name: "description", content: "Book a mobile phone repair in a few steps: pick your device, describe the problem and choose an appointment." },
-      { property: "og:title", content: "Book a Repair — Fixly" },
-      { property: "og:description", content: "Book a mobile phone repair in a few steps with Fixly." },
+      { property: "og:title", content: "Book a Repair — Cell Care" },
+      { property: "og:description", content: "Book a mobile phone repair in a few steps with Cell Care." },
     ],
   }),
   component: BookWizard,
@@ -534,7 +534,7 @@ function BookWizard() {
           <div className="mt-5 space-y-3">
             {[
               { id: "pickup", icon: Truck, title: "Doorstep Pickup & Delivery", sub: "Our verified executive collects your phone from your home or office (₹99)" },
-              { id: "store", icon: Store, title: "Visit Fixly Service Hub", sub: "Walk in to our nearest certified repair workshop (Free)" },
+              { id: "store", icon: Store, title: "Visit Cell Care Service Hub", sub: "Walk in to our nearest certified repair workshop (Free)" },
             ].map((m) => (
               <button
                 key={m.id}
@@ -730,7 +730,7 @@ function BookWizard() {
                   const selectedAddrObj = userAddresses.find(a => String(a.id) === String(addressId)) || userAddresses[0];
                   const chosenAddr = method === "pickup" 
                     ? (selectedAddrObj?.line || selectedAddrObj?.flat || "Doorstep Pickup Address") 
-                    : "Fixly Service Hub";
+                    : "Cell Care Service Hub";
 
                   await api.createRepair({
                     user_id: currentUser?.id,

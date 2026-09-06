@@ -59,13 +59,11 @@ export function DesktopNav() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Brand Logo */}
         <Link to="/home" className="flex items-center gap-2.5 group">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md transition-transform group-hover:scale-105">
-            <Wrench className="h-5 w-5" strokeWidth={2.5} />
+          <div className="overflow-hidden rounded-xl bg-transparent shadow-md transition-transform group-hover:scale-105">
+            <img src="/logo.jpg" alt="Cell Care" className="h-10 w-10 object-cover" />
           </div>
           <div>
-            <span className="text-xl font-extrabold tracking-tight text-foreground">Fixly</span>
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-1.5 py-0.5 rounded">Pro</span>
-          </div>
+            <span className="text-xl font-extrabold tracking-tight text-foreground">Cell Care</span>
         </Link>
 
         {/* Center Nav Links */}
@@ -144,10 +142,10 @@ export function DesktopFooter() {
           {/* Col 1 */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-                <Wrench className="h-4 w-4" />
+              <div className="overflow-hidden rounded-lg bg-transparent">
+                <img src="/logo.jpg" alt="Cell Care" className="h-8 w-8 object-cover" />
               </div>
-              <span className="text-lg font-bold text-foreground">Fixly</span>
+              <span className="text-lg font-bold text-foreground">Cell Care</span>
             </div>
             <p className="text-xs leading-relaxed">
               India's fastest and most reliable mobile device repair, refurbished marketplace, and instant trade-in platform.
@@ -190,13 +188,13 @@ export function DesktopFooter() {
             </p>
             <div className="rounded-xl border border-border bg-background p-3">
               <p className="text-xs font-bold text-foreground">Need Urgent Support?</p>
-              <p className="text-xs text-primary font-semibold mt-1">support@fixly.com • 1800-FIX-PHONE</p>
+              <p className="text-xs text-primary font-semibold mt-1">support@cellcare.com • 1800-FIX-PHONE</p>
             </div>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between border-t border-border/80 pt-6 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Fixly Technologies Inc. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Cell Care Technologies Inc. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
             <a href="#" className="hover:text-foreground">Privacy Policy</a>
             <a href="#" className="hover:text-foreground">Terms of Service</a>

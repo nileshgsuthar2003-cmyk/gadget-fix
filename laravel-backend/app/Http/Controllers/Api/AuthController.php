@@ -9,10 +9,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function registerSendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'firstName' => 'required|string|max:100',
@@ -33,16 +34,72 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Generate a 6-digit OTP
+        $otp = (string) rand(100000, 999999);
+        
+        // Cache the OTP against the email for 10 minutes
+        $cacheKey = 'register_otp_' . strtolower(trim($request->email));
+        Cache::put($cacheKey, $otp, now()->addMinutes(10));
+
+        // For this demo, we return the OTP in the response
+        // In production, this would trigger an email or SMS dispatch
+        return response()->json([
+            'success' => true,
+            'message' => 'Verification code sent to ' . trim($request->email),
+            'debug_otp' => $otp,
+        ], 200);
+    }
+
+    public function registerVerifyOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'firstName' => 'required|string|max:100',
+            'lastName'  => 'required|string|max:100',
+            'email'     => 'required|string|email|max:255',
+            'phone'     => 'required|string|max:20',
+            'password'  => 'required|string|min:6',
+            'otp'       => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'error'   => $validator->errors()->first(),
+            ], 422);
+        }
+
+        $email = strtolower(trim($request->email));
+        $cacheKey = 'register_otp_' . $email;
+        $cachedOtp = Cache::get($cacheKey);
+
+        if (!$cachedOtp || $cachedOtp !== trim($request->otp)) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Invalid or expired verification code.',
+            ], 400);
+        }
+
+        // OTP valid, clear it
+        Cache::forget($cacheKey);
+
+        // Ensure email/phone are still unique to prevent race conditions
+        if (User::where('email', $email)->orWhere('phone', trim($request->phone))->exists()) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'Account already exists. Please login.',
+            ], 400);
+        }
+
         $user = User::create([
             'first_name' => trim($request->firstName),
             'last_name'  => trim($request->lastName),
-            'email'      => trim($request->email),
+            'email'      => $email,
             'phone'      => trim($request->phone),
             'password'   => Hash::make($request->password),
             'role'       => 'customer',
         ]);
 
-        $token = $user->createToken('fixly-app')->plainTextToken;
+        $token = $user->createToken('cellcare-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -75,7 +132,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $token = $user->createToken('fixly-app')->plainTextToken;
+        $token = $user->createToken('cellcare-app')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -115,7 +172,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $token = $user->createToken('fixly-admin')->plainTextToken;
+        $token = $user->createToken('cellcare-admin')->plainTextToken;
 
         return response()->json([
             'success' => true,

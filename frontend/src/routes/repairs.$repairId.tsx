@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 export const Route = createFileRoute("/repairs/$repairId")({
   head: () => ({
     meta: [
-      { title: "Track Repair — Fixly" },
+      { title: "Track Repair — Cell Care" },
       { name: "description", content: "Track your repair status." },
     ],
   }),

@@ -20,7 +20,7 @@ import { refurbishedPhones, RefurbishedPhone, inr } from "@/lib/data";
 export const Route = createFileRoute("/buy")({
   head: () => ({
     meta: [
-      { title: "Buy Refurbished Phones — Fixly" },
+      { title: "Buy Refurbished Phones — Cell Care" },
       { name: "description", content: "Buy certified refurbished iPhones, Samsung, and OnePlus devices with 6-month warranty and 32 quality checks passed." },
     ],
   }),
@@ -62,13 +62,13 @@ function BuyPage() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary mb-3">
               <Sparkles className="h-3.5 w-3.5" />
-              Fixly Certified Refurbished
+              Cell Care Certified Refurbished
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-foreground">
               Like-New Phones. <span className="text-primary">Unbeatable Prices.</span>
             </h1>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Every refurbished phone undergoes our 32-point rigorous hardware diagnostics and comes with a 6-Month Fixly Warranty and 7-day hassle-free replacement.
+              Every refurbished phone undergoes our 32-point rigorous hardware diagnostics and comes with a 6-Month Cell Care Warranty and 7-day hassle-free replacement.
             </p>
             <div className="mt-4 flex flex-wrap gap-4 text-xs font-semibold text-foreground">
               <span className="flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-500" /> 6M Warranty</span>
@@ -213,7 +213,7 @@ function BuyPage() {
                 <h3 className="text-lg font-bold text-foreground">
                   {orderPlaced ? "Order Confirmed! 🎉" : "Confirm Purchase"}
                 </h3>
-                <p className="text-xs text-muted-foreground">Fixly Verified Refurbished Device</p>
+                <p className="text-xs text-muted-foreground">Cell Care Verified Refurbished Device</p>
               </div>
               <button
                 onClick={() => setSelectedPhone(null)}
@@ -310,7 +310,7 @@ function BuyPage() {
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>6 Months Fixly Warranty</span>
+                    <span>6 Months Cell Care Warranty</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">INCLUDED</span>
                   </div>
                   <div className="flex justify-between pt-2 border-t border-border text-sm font-extrabold text-foreground">

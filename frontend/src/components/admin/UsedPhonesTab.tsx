@@ -47,7 +47,7 @@ export function UsedPhonesTab() {
   const [batteryHealth, setBatteryHealth] = useState("90");
   const [originalPrice, setOriginalPrice] = useState("");
   const [price, setPrice] = useState("");
-  const [warranty, setWarranty] = useState("6 Months Fixly Warranty");
+  const [warranty, setWarranty] = useState("6 Months Cell Care Warranty");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -85,7 +85,7 @@ export function UsedPhonesTab() {
     setBatteryHealth("90");
     setOriginalPrice("");
     setPrice("");
-    setWarranty("6 Months Fixly Warranty");
+    setWarranty("6 Months Cell Care Warranty");
     setDescription("");
     setImages([]);
     setEditingPhone(null);
@@ -566,7 +566,7 @@ export function UsedPhonesTab() {
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Warranty</label>
                   <input
                     type="text"
-                    placeholder="e.g. 6 Months Fixly Warranty"
+                    placeholder="e.g. 6 Months Cell Care Warranty"
                     value={warranty}
                     onChange={(e) => setWarranty(e.target.value)}
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"

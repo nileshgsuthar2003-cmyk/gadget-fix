@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { Wrench } from 'lucide-react-native';
 import { RootStackScreenProps } from '../navigation/types';
 
@@ -42,10 +42,11 @@ export default function SplashScreen({ navigation }: RootStackScreenProps<'Splas
 
   return (
     <View style={styles.container}>
-      <View style={styles.iconContainer}>
-        <Wrench size={44} color="#4f46e5" strokeWidth={2.5} />
-      </View>
-      <Text style={styles.title}>Fixly</Text>
+      <Image 
+        source={require('../../assets/icon.png')} 
+        style={{ width: 120, height: 120, borderRadius: 28, marginBottom: 24, resizeMode: 'cover' }} 
+      />
+      <Text style={styles.title}>Cell Care</Text>
       <Text style={styles.subtitle}>Fast. Reliable. Trusted Mobile Repair.</Text>
       
       <View style={styles.dotsContainer}>

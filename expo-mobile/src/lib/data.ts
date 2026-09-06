@@ -1,4 +1,4 @@
-// Shared sample data for the Fixly mobile repair prototype.
+// Shared sample data for the Cell Care mobile repair prototype.
 
 export const CUSTOMER_NAME = "Rahul Sharma";
 
@@ -344,7 +344,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 94,
     originalPrice: 69900,
     price: 43999,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     featured: true,
   },
   {
@@ -357,7 +357,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 89,
     originalPrice: 59900,
     price: 36499,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     featured: true,
   },
   {
@@ -370,7 +370,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 96,
     originalPrice: 79999,
     price: 45999,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     featured: true,
   },
   {
@@ -383,7 +383,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 92,
     originalPrice: 61999,
     price: 34999,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
   },
   {
     id: "RF-PX8-128",
@@ -395,7 +395,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 91,
     originalPrice: 75999,
     price: 38999,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
   },
   {
     id: "RF-IP12-64",
@@ -407,7 +407,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 85,
     originalPrice: 49900,
     price: 24999,
-    warranty: "3 Months Fixly Warranty",
+    warranty: "3 Months Cell Care Warranty",
   },
   {
     id: "RF-S22-128",
@@ -419,7 +419,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     batteryHealth: 88,
     originalPrice: 57999,
     price: 26999,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
   },
 ];
 

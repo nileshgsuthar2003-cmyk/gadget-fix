@@ -28,14 +28,14 @@ export const lightTheme: ThemeColors = {
   text: '#0f172a',
   textSecondary: '#475569',
   textMuted: '#94a3b8',
-  primary: '#4f46e5',
-  primarySoft: '#eef2ff',
-  primaryDark: '#3730a3',
+  primary: '#0084FF',
+  primarySoft: '#E5F2FF',
+  primaryDark: '#0059B3',
   inputBg: '#ffffff',
   inputBorder: '#cbd5e1',
   divider: '#f1f5f9',
-  badgeBg: '#eef2ff',
-  badgeText: '#4f46e5',
+  badgeBg: '#E5F2FF',
+  badgeText: '#0084FF',
 };
 
 export const darkTheme: ThemeColors = {
@@ -46,14 +46,14 @@ export const darkTheme: ThemeColors = {
   text: '#f8fafc',
   textSecondary: '#94a3b8',
   textMuted: '#64748b',
-  primary: '#6366f1',
-  primarySoft: '#1e1b4b',
-  primaryDark: '#4338ca',
+  primary: '#3399FF',
+  primarySoft: '#002244',
+  primaryDark: '#0066CC',
   inputBg: '#0f172a',
   inputBorder: '#334155',
   divider: '#334155',
-  badgeBg: '#1e1b4b',
-  badgeText: '#818cf8',
+  badgeBg: '#002244',
+  badgeText: '#66B2FF',
 };
 
 interface ThemeContextType {

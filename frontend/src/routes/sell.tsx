@@ -20,7 +20,7 @@ import { brands, modelsByBrand, sellBasePrices, inr, appointmentDays, timeSlots 
 export const Route = createFileRoute("/sell")({
   head: () => ({
     meta: [
-      { title: "Sell Old Phone — Instant Cash at Doorstep — Fixly" },
+      { title: "Sell Old Phone — Instant Cash at Doorstep — Cell Care" },
       { name: "description", content: "Sell your used mobile phone for the best price. Instant valuation, free doorstep pickup, and instant cash transfer via UPI." },
     ],
   }),

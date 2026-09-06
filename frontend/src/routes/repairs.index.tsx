@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 export const Route = createFileRoute("/repairs/")({
   head: () => ({
     meta: [
-      { title: "My Repairs — Fixly" },
+      { title: "My Repairs — Cell Care" },
       { name: "description", content: "View all your past and active mobile phone repairs." },
     ],
   }),

@@ -4,7 +4,7 @@ export function renderErrorPage(): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>500 - Server Error | Fixly</title>
+  <title>500 - Server Error | Cell Care</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0f172a; color: #f8fafc; text-align: center; }
     h1 { font-size: 3rem; margin-bottom: 0.5rem; color: #6366f1; }

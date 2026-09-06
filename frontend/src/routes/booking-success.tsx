@@ -7,8 +7,8 @@ import { inr } from "@/lib/data";
 export const Route = createFileRoute("/booking-success")({
   head: () => ({
     meta: [
-      { title: "Booking Confirmed! — Fixly" },
-      { name: "description", content: "Your mobile repair booking has been confirmed with Fixly." },
+      { title: "Booking Confirmed! — Cell Care" },
+      { name: "description", content: "Your mobile repair booking has been confirmed with Cell Care." },
     ],
   }),
   component: BookingSuccessPage,
@@ -36,7 +36,7 @@ function BookingSuccessPage() {
 
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary mb-2">
-            <ShieldCheck className="h-3.5 w-3.5" /> 6 Months Fixly Warranty Included
+            <ShieldCheck className="h-3.5 w-3.5" /> 6 Months Cell Care Warranty Included
           </span>
           <h1 className="text-2xl md:text-3xl font-black text-foreground">Repair Booked Successfully!</h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-1">

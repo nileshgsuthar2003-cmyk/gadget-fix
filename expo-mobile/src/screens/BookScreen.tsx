@@ -256,7 +256,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
         appointment_date: appointmentDateStr,
         time_slot: 'Full Day',
         method: method === 'pickup' ? 'Doorstep Pickup & Delivery' : 'Store Visit',
-        address: method === 'pickup' ? selectedAddress : 'Fixly Service Hub',
+        address: method === 'pickup' ? selectedAddress : 'Cell Care Service Hub',
       });
 
       setIsSubmitting(false);
@@ -691,7 +691,7 @@ export default function BookScreen({ navigation }: HomeTabScreenProps<'Book'>) {
             <View>
               {[
                 { id: "pickup", icon: Truck, title: "Doorstep Pickup & Delivery", desc: "Our executive collects your phone from your doorstep (₹99)" },
-                { id: "store", icon: Store, title: "Visit Fixly Service Hub", desc: "Walk in to our nearest certified service center (Free)" },
+                { id: "store", icon: Store, title: "Visit Cell Care Service Hub", desc: "Walk in to our nearest certified service center (Free)" },
               ].map(m => (
                 <TouchableOpacity
                   key={m.id}

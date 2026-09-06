@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         // 1. Create Default Test Customer
         $user = User::updateOrCreate(
-            ['email' => 'rahul@fixly.com'],
+            ['email' => 'rahul@cellcare.com'],
             [
                 'first_name' => 'Rahul',
                 'last_name'  => 'Sharma',
@@ -40,9 +40,9 @@ class DatabaseSeeder extends Seeder
         );
 
         User::updateOrCreate(
-            ['email' => 'admin@fixly.com'],
+            ['email' => 'admin@cellcare.com'],
             [
-                'first_name' => 'Fixly',
+                'first_name' => 'Cell Care',
                 'last_name'  => 'Admin',
                 'phone'      => '9999977777',
                 'password'   => Hash::make('123456'),

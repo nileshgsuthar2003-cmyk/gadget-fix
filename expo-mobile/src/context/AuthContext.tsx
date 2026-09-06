@@ -66,16 +66,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (params: {
+  const registerSendOtp = async (params: {
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
     password: string;
+  }): Promise<{ success: boolean; message?: string; error?: string; debug_otp?: string }> => {
+    setIsLoading(true);
+    try {
+      return await api.registerSendOtp(params);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const registerVerifyOtp = async (params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+    otp: string;
   }): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
-      const res = await api.register(params);
+      const res = await api.registerVerifyOtp(params);
       if (res.success && res.user) {
         setUser(res.user);
         setToken(res.token || null);

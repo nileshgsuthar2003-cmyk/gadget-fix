@@ -1,4 +1,4 @@
-// Shared sample data for the Fixly platform.
+// Shared sample data for the Cell Care platform.
 
 export const CUSTOMER_NAME = "Rahul Sharma";
 
@@ -348,7 +348,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 64999,
     originalPrice: 119900,
     batteryHealth: 94,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.9,
     reviewsCount: 142,
   },
@@ -362,7 +362,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 39999,
     originalPrice: 69900,
     batteryHealth: 91,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.8,
     reviewsCount: 284,
   },
@@ -376,7 +376,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 59999,
     originalPrice: 124999,
     batteryHealth: 96,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.9,
     reviewsCount: 96,
   },
@@ -390,7 +390,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 31999,
     originalPrice: 61999,
     batteryHealth: 88,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.7,
     reviewsCount: 78,
   },
@@ -404,7 +404,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 34999,
     originalPrice: 84999,
     batteryHealth: 92,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.8,
     reviewsCount: 65,
   },
@@ -418,7 +418,7 @@ export const refurbishedPhones: RefurbishedPhone[] = [
     price: 46999,
     originalPrice: 99999,
     batteryHealth: 89,
-    warranty: "6 Months Fixly Warranty",
+    warranty: "6 Months Cell Care Warranty",
     rating: 4.6,
     reviewsCount: 52,
   },

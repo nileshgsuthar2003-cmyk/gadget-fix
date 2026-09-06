@@ -168,34 +168,45 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 export const api = {
   // Authentication
-  async register(params: {
+  async registerSendOtp(params: {
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
     password: string;
-  }): Promise<AuthResponse> {
+  }): Promise<{ success: boolean; message?: string; error?: string; debug_otp?: string }> {
     try {
-      return await request<AuthResponse>('/auth/register', {
+      return await request('/auth/register/send-otp', {
         method: 'POST',
         body: JSON.stringify(params),
       });
     } catch (err: any) {
-      console.warn('API Error (falling back to local state):', err.message);
+      console.warn('API Error:', err.message);
       return {
-        success: true,
-        message: 'Account created (local mode).',
-        user: {
-          id: 1,
-          first_name: params.firstName,
-          last_name: params.lastName,
-          name: `${params.firstName} ${params.lastName}`,
-          email: params.email,
-          phone: params.phone,
-          repairs_count: 0,
-          total_spent: 0,
-        },
-        token: `mock-token-${Date.now()}`,
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
+      };
+    }
+  },
+
+  async registerVerifyOtp(params: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    password: string;
+    otp: string;
+  }): Promise<AuthResponse> {
+    try {
+      return await request<AuthResponse>('/auth/register/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify(params),
+      });
+    } catch (err: any) {
+      console.warn('API Error:', err.message);
+      return {
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
       };
     }
   },
@@ -207,21 +218,10 @@ export const api = {
         body: JSON.stringify(params),
       });
     } catch (err: any) {
-      console.warn('API Error (falling back to local state):', err.message);
+      console.warn('API Error:', err.message);
       return {
-        success: true,
-        message: 'Logged in successfully (local mode).',
-        user: {
-          id: 1,
-          first_name: 'Rahul',
-          last_name: 'Sharma',
-          name: 'Rahul Sharma',
-          email: params.email,
-          phone: '+91 98765 43210',
-          repairs_count: 2,
-          total_spent: 4500,
-        },
-        token: `mock-token-${Date.now()}`,
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
       };
     }
   },
@@ -283,7 +283,7 @@ export const api = {
           first_name: 'Rahul',
           last_name: 'Sharma',
           name: 'Rahul Sharma',
-          email: 'rahul@fixly.com',
+          email: 'rahul@cellcare.com',
           phone: '+91 98765 43210',
           repairs_count: 2,
           total_spent: 4500,
@@ -314,7 +314,7 @@ export const api = {
           first_name: params.first_name,
           last_name: params.last_name,
           name: `${params.first_name} ${params.last_name}`,
-          email: params.email || 'rahul@fixly.com',
+          email: params.email || 'rahul@cellcare.com',
           phone: params.phone || '+91 98765 43210',
           repairs_count: 2,
           total_spent: 4500,

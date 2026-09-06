@@ -30,9 +30,9 @@ import { api } from "@/lib/api";
 export const Route = createFileRoute("/home")({
   head: () => ({
     meta: [
-      { title: "Fixly — Fast, Reliable, Trusted Mobile Repair & Marketplace" },
+      { title: "Cell Care — Fast, Reliable, Trusted Mobile Repair & Marketplace" },
       { name: "description", content: "Book doorstep mobile phone repairs, buy certified refurbished phones, or sell your old phone for instant cash." },
-      { property: "og:title", content: "Fixly — Mobile Repair & Marketplace" },
+      { property: "og:title", content: "Cell Care — Mobile Repair & Marketplace" },
       { property: "og:description", content: "Book phone repairs and buy refurbished devices with 6-month warranty." },
     ],
   }),
@@ -73,7 +73,7 @@ function Home() {
 
   return (
     <Screen>
-      <Header title="Fixly" />
+      <Header title="Cell Care" />
 
       <div className="flex-1 px-4 py-6 md:px-8 max-w-7xl mx-auto w-full space-y-10">
         
@@ -133,7 +133,7 @@ function Home() {
               </div>
               <h2 className="text-xl font-extrabold text-foreground">Buy Refurbished Phones</h2>
               <p className="mt-1 text-xs md:text-sm text-muted-foreground leading-relaxed">
-                32 Quality Checks Passed • 6 Months Fixly Warranty • 7 Days Replacement.
+                32 Quality Checks Passed • 6 Months Cell Care Warranty • 7 Days Replacement.
               </p>
             </div>
             <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">
@@ -232,9 +232,9 @@ function Home() {
           </div>
         )}
 
-        {/* Why Fixly Trust Guarantees */}
+        {/* Why Cell Care Trust Guarantees */}
         <div className="pt-4">
-          <h2 className="text-xl font-extrabold text-foreground text-center mb-6">Why Thousands Trust Fixly</h2>
+          <h2 className="text-xl font-extrabold text-foreground text-center mb-6">Why Thousands Trust Cell Care</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { title: "6 Months Warranty", desc: "Comprehensive warranty on all replaced parts.", icon: ShieldCheck },

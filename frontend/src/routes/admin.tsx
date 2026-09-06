@@ -66,8 +66,8 @@ import { BuyRequestsTab } from "@/components/admin/BuyRequestsTab";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Admin Portal & Control Center — Fixly" },
-      { name: "description", content: "Fixly Admin Dashboard: Manage live repair requests, brand & model catalog, master services, and user accounts." },
+      { title: "Admin Portal & Control Center — Cell Care" },
+      { name: "description", content: "Cell Care Admin Dashboard: Manage live repair requests, brand & model catalog, master services, and user accounts." },
     ],
   }),
   component: AdminPage,
@@ -182,7 +182,7 @@ function AdminPage() {
   // Admin Authentication State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
-      return sessionStorage.getItem("fixly_admin_auth") === "true";
+      return sessionStorage.getItem("cellcare_admin_auth") === "true";
     }
     return false;
   });
@@ -966,10 +966,10 @@ function AdminPage() {
       if (res && res.success) {
         setIsAdminAuthenticated(true);
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("fixly_admin_auth", "true");
-          if (res.token) sessionStorage.setItem("fixly_admin_token", res.token);
+          sessionStorage.setItem("cellcare_admin_auth", "true");
+          if (res.token) sessionStorage.setItem("cellcare_admin_token", res.token);
         }
-        toast.success("Administrator access granted. Welcome to Fixly Control Center!");
+        toast.success("Administrator access granted. Welcome to Cell Care Control Center!");
       } else {
         toast.error(res.error || "Invalid email or password.");
       }
@@ -977,11 +977,11 @@ function AdminPage() {
       const email = adminEmail.trim().toLowerCase();
       if (
         (email === "admin@gmail.com" && adminPassword === "123456") ||
-        (email === "admin@fixly.com" && (adminPassword === "123456" || adminPassword === "admin123"))
+        (email === "admin@cellcare.com" && (adminPassword === "123456" || adminPassword === "admin123"))
       ) {
         setIsAdminAuthenticated(true);
         if (typeof window !== "undefined") {
-          sessionStorage.setItem("fixly_admin_auth", "true");
+          sessionStorage.setItem("cellcare_admin_auth", "true");
         }
         toast.success("Administrator access granted (Local Mode).");
       } else {
@@ -995,8 +995,8 @@ function AdminPage() {
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
     if (typeof window !== "undefined") {
-      sessionStorage.removeItem("fixly_admin_auth");
-      sessionStorage.removeItem("fixly_admin_token");
+      sessionStorage.removeItem("cellcare_admin_auth");
+      sessionStorage.removeItem("cellcare_admin_token");
     }
     toast.info("Logged out of Admin Portal.");
   };
@@ -1193,7 +1193,7 @@ function AdminPage() {
             <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-400 text-slate-950 shadow-lg shadow-amber-500/20 mb-4">
               <ShieldAlert className="h-8 w-8" strokeWidth={2.5} />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white">Fixly Admin Gateway</h1>
+            <h1 className="text-2xl font-black tracking-tight text-white">Cell Care Admin Gateway</h1>
             <p className="text-xs text-slate-400 mt-1">Authorized personnel only • Live MySQL Authentication</p>
           </div>
 
@@ -1298,7 +1298,7 @@ function AdminPage() {
               <Wrench className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-tight text-foreground">Fixly Pro</span>
+              <span className="text-lg font-black tracking-tight text-foreground">Cell Care Pro</span>
               <div className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] font-bold text-muted-foreground uppercase">Live Control</span>
@@ -1526,7 +1526,7 @@ function AdminPage() {
                 {activeTab === "used-phones" && "Used Phones Inventory"}
                 {activeTab === "buy-requests" && "Phone Buy Requests"}
               </h2>
-              <p className="hidden sm:block text-xs text-muted-foreground">Fixly Pro Control Center</p>
+              <p className="hidden sm:block text-xs text-muted-foreground">Cell Care Pro Control Center</p>
             </div>
           </div>
 
@@ -2737,7 +2737,7 @@ function AdminPage() {
                                 >
                                   <Edit2 className="h-3.5 w-3.5" />
                                 </button>
-                                {u.email !== 'admin@gmail.com' && u.email !== 'admin@fixly.com' && (
+                                {u.email !== 'admin@gmail.com' && u.email !== 'admin@cellcare.com' && (
                                   <button
                                     onClick={() => handleDeleteUser(u.id, u.name)}
                                     className="p-1.5 rounded-lg border border-destructive/20 text-destructive hover:bg-destructive/10"

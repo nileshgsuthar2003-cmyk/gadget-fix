@@ -23,8 +23,8 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/profile")({
   head: () => ({
     meta: [
-      { title: "My Profile — Fixly" },
-      { name: "description", content: "Manage your Fixly profile, orders, and preferences." },
+      { title: "My Profile — Cell Care" },
+      { name: "description", content: "Manage your Cell Care profile, orders, and preferences." },
     ],
   }),
   component: ProfilePage,
@@ -232,7 +232,7 @@ function ProfilePage() {
 
           <div className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden shadow-xs">
             <div
-              onClick={() => toast.info("Support: 1800-FIX-PHONE (support@fixly.com)")}
+              onClick={() => toast.info("Support: 1800-FIX-PHONE (support@cellcare.com)")}
               className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-3">
@@ -257,7 +257,7 @@ function ProfilePage() {
           </button>
         </div>
 
-        <p className="text-[11px] text-center text-muted-foreground pt-4">Fixly v2.4</p>
+        <p className="text-[11px] text-center text-muted-foreground pt-4">Cell Care v2.4</p>
 
       </div>
 

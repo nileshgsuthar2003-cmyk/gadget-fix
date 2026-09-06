@@ -226,7 +226,7 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
 
           <View style={{ flex: 1, minHeight: 40 }} />
           <Text style={[styles.termsText, { color: theme.textMuted }]}>
-            By continuing you agree to Fixly's <Text style={{ color: theme.primary }}>Terms</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>.
+            By continuing you agree to Cell Care's <Text style={{ color: theme.primary }}>Terms</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>.
           </Text>
 
         </ScrollView>
