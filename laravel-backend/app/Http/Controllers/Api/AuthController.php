@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -38,14 +39,26 @@ class AuthController extends Controller
         $otp = (string) rand(100000, 999999);
         
         // Cache the OTP against the email for 10 minutes
-        $cacheKey = 'register_otp_' . strtolower(trim($request->email));
+        $email = strtolower(trim($request->email));
+        $cacheKey = 'register_otp_' . $email;
         Cache::put($cacheKey, $otp, now()->addMinutes(10));
 
-        // For this demo, we return the OTP in the response
-        // In production, this would trigger an email or SMS dispatch
+        // Send OTP via email
+        try {
+            Mail::raw(
+                "Hello {$request->firstName},\n\nYour Cell Care verification code is: {$otp}\n\nThis code will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.\n\n— Cell Care Team",
+                function ($message) use ($email, $request) {
+                    $message->to($email)
+                            ->subject('Cell Care - Your Verification Code');
+                }
+            );
+        } catch (\Exception $e) {
+            Log::error('Mail send failed: ' . $e->getMessage());
+        }
+
         return response()->json([
             'success' => true,
-            'message' => 'Verification code sent to ' . trim($request->email),
+            'message' => 'Verification code sent to ' . $email,
             'debug_otp' => $otp,
         ], 200);
     }

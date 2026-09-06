@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, Text, StyleSheet, TextInput, TouchableOpacity, 
   KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Modal
@@ -26,6 +26,30 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Start the 30-second resend cooldown
+  const startCooldown = useCallback(() => {
+    setResendCooldown(30);
+    if (cooldownRef.current) clearInterval(cooldownRef.current);
+    cooldownRef.current = setInterval(() => {
+      setResendCooldown(prev => {
+        if (prev <= 1) {
+          if (cooldownRef.current) clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
+    };
+  }, []);
 
   const handleRegister = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -59,9 +83,8 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
 
     if (res.success) {
       setShowOtpModal(true);
-      if (res.debug_otp) {
-        Alert.alert('Verification Code (Dev Mode)', `OTP: ${res.debug_otp}`);
-      }
+      setOtp('');
+      startCooldown();
     } else {
       Alert.alert('Registration Failed', res.error || 'Unable to send verification code.');
     }
@@ -297,10 +320,24 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
                   <Text style={styles.primaryButtonText}>Verify & Create Account</Text>
                 )}
               </TouchableOpacity>
+
+              {/* Resend OTP */}
+              <View style={styles.resendRow}>
+                <Text style={[styles.resendLabel, { color: theme.textMuted }]}>Didn't receive the code? </Text>
+                {resendCooldown > 0 ? (
+                  <Text style={[styles.resendTimer, { color: theme.textMuted }]}>
+                    Resend in {resendCooldown}s
+                  </Text>
+                ) : (
+                  <TouchableOpacity onPress={handleRegister} disabled={isVerifying}>
+                    <Text style={[styles.resendLink, { color: theme.primary }]}>Resend OTP</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               
               <TouchableOpacity 
                 style={styles.cancelButton} 
-                onPress={() => setShowOtpModal(false)}
+                onPress={() => { setShowOtpModal(false); setOtp(''); }}
                 disabled={isVerifying}
               >
                 <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
@@ -487,5 +524,22 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 15,
     fontWeight: '600',
-  }
+  },
+  resendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  resendLabel: {
+    fontSize: 13,
+  },
+  resendTimer: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  resendLink: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });
