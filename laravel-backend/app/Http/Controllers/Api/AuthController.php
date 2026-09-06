@@ -125,7 +125,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email'    => 'required|string|email',
+            'email'    => 'required|string',
             'password' => 'required|string',
         ]);
 
@@ -136,12 +136,13 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', trim($request->email))->first();
+        $loginId = trim($request->email);
+        $user = User::where('email', $loginId)->orWhere('phone', $loginId)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
-                'error'   => 'Invalid email or password.',
+                'error'   => 'Invalid email/mobile or password.',
             ], 401);
         }
 
@@ -241,13 +242,25 @@ class AuthController extends Controller
             ]
         );
 
-        Log::info("Password reset OTP generated for {$email}: {$otp}");
+        Log::info("Password reset OTP generated for {$email}");
+
+        // Send OTP via email
+        try {
+            Mail::raw(
+                "Hello,\n\nYour Cell Care password reset verification code is: {$otp}\n\nThis code will expire in 15 minutes.\n\nIf you did not request a password reset, please ignore this email.\n\n— Cell Care Team",
+                function ($message) use ($email) {
+                    $message->to($email)
+                            ->subject('Cell Care - Password Reset Verification Code');
+                }
+            );
+        } catch (\Exception $e) {
+            Log::error('Mail send failed during forgot password: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success'   => true,
             'message'   => "Verification OTP sent to {$email}.",
             'email'     => $email,
-            'debug_otp' => $otp, // Useful for immediate in-app testing
         ], 200);
     }
 
@@ -396,9 +409,11 @@ class AuthController extends Controller
 
         if ($request->filled('first_name')) $user->first_name = trim($request->first_name);
         if ($request->filled('last_name')) $user->last_name = trim($request->last_name);
-        if ($request->filled('phone')) $user->phone = trim($request->phone);
-        if ($request->filled('email')) $user->email = trim($request->email);
+        // Email and Phone cannot be updated via profile edit
+        // if ($request->filled('phone')) $user->phone = trim($request->phone);
+        // if ($request->filled('email')) $user->email = trim($request->email);
         if ($request->filled('password')) $user->password = Hash::make($request->password);
+        if ($request->filled('avatar')) $user->avatar = $request->avatar;
 
         if ($request->has('addresses')) {
             $addrs = $request->input('addresses');
@@ -583,6 +598,7 @@ class AuthController extends Controller
             'name'          => $user->name,
             'email'         => $user->email,
             'phone'         => $user->phone,
+            'avatar'        => $user->avatar,
             'role'          => $user->role ?? 'customer',
             'repairs_count' => $repairsCount,
             'total_spent'   => $totalSpent,

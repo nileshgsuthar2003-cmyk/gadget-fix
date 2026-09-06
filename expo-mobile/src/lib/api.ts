@@ -44,6 +44,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone: string;
+  avatar?: string;
   role?: string;
   repairs_count?: number;
   total_spent?: number | string;
@@ -227,50 +228,52 @@ export const api = {
   },
 
   // Forgot Password via Email OTP
-  async sendForgotOtp(email: string): Promise<{ success: boolean; message: string; debug_otp?: string; error?: string }> {
+  async sendForgotOtp(email: string): Promise<{ success: boolean, message?: string, debug_otp?: string, error?: string }> {
     try {
       return await request('/auth/forgot-password/send-otp', {
         method: 'POST',
         body: JSON.stringify({ email }),
       });
     } catch (err: any) {
+      console.warn('API Error (sendForgotOtp):', err.message);
       return {
-        success: true,
-        message: `Verification code sent to ${email}`,
-        debug_otp: '123456',
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
       };
     }
   },
 
-  async verifyForgotOtp(email: string, otp: string): Promise<{ success: boolean; message: string; error?: string }> {
+  async verifyForgotOtp(email: string, otp: string): Promise<{ success: boolean, message?: string, error?: string }> {
     try {
       return await request('/auth/forgot-password/verify-otp', {
         method: 'POST',
         body: JSON.stringify({ email, otp }),
       });
     } catch (err: any) {
+      console.warn('API Error (verifyForgotOtp):', err.message);
       return {
-        success: true,
-        message: 'OTP verified successfully.',
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
       };
     }
   },
 
-  async resetPasswordWithOtp(params: { email: string; otp: string; password: string }): Promise<{ success: boolean; message: string; error?: string }> {
+  async resetPasswordWithOtp(params: { email: string, otp: string, password: string }): Promise<{ success: boolean, message?: string, error?: string }> {
     try {
       return await request('/auth/forgot-password/reset', {
         method: 'POST',
         body: JSON.stringify(params),
       });
     } catch (err: any) {
+      console.warn('API Error (resetPasswordWithOtp):', err.message);
       return {
-        success: true,
-        message: 'Password reset successfully.',
+        success: false,
+        error: 'Unable to connect to the server. Please check your internet connection.',
       };
     }
   },
 
-  async getMe(userId?: number): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
+  async getMe(userId?: number): Promise<{ success: boolean, user?: UserProfile, error?: string }> {
     try {
       return await request(`/auth/me${userId ? `?user_id=${userId}` : ''}`, {
         method: 'GET',
@@ -298,6 +301,7 @@ export const api = {
     last_name: string;
     email?: string;
     phone?: string;
+    avatar?: string;
     password?: string;
   }): Promise<{ success: boolean; message: string; user?: UserProfile; error?: string }> {
     try {

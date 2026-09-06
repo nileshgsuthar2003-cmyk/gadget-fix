@@ -487,11 +487,14 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputWrap}>
-                <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Phone Number</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Phone Number</Text>
+                  <Text style={{fontSize: 10, color: theme.textMuted}}>Read-only</Text>
+                </View>
                 <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                  style={[styles.inputField, { backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.textMuted }]}
                   value={phone}
-                  onChangeText={setPhone}
+                  editable={false}
                   keyboardType="phone-pad"
                   placeholder="10-digit mobile"
                   placeholderTextColor={theme.textMuted}
@@ -499,11 +502,14 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputWrap}>
-                <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Email Address</Text>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <Text style={[styles.inputTag, { color: theme.textSecondary }]}>Email Address</Text>
+                  <Text style={{fontSize: 10, color: theme.textMuted}}>Read-only</Text>
+                </View>
                 <TextInput
-                  style={[styles.inputField, { backgroundColor: theme.background, borderColor: theme.cardBorder, color: theme.text }]}
+                  style={[styles.inputField, { backgroundColor: theme.surface, borderColor: theme.cardBorder, color: theme.textMuted }]}
                   value={email}
-                  onChangeText={setEmail}
+                  editable={false}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholder="email@example.com"

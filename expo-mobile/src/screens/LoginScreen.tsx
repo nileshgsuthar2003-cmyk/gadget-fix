@@ -26,7 +26,6 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [debugOtp, setDebugOtp] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -53,13 +52,10 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
     try {
       const res = await api.sendForgotOtp(forgotEmail.trim());
       if (res && res.success) {
-        if (res.debug_otp) {
-          setDebugOtp(res.debug_otp);
-        }
         setForgotStep(2);
         Alert.alert(
           'Verification Code Sent',
-          `A 6-digit OTP code has been sent to ${forgotEmail.trim()}.${res.debug_otp ? ` (Test Code: ${res.debug_otp})` : ''}`
+          `A 6-digit OTP code has been sent to ${forgotEmail.trim()}.`
         );
       } else {
         Alert.alert('Error', res?.error || 'Could not send verification code.');
@@ -113,12 +109,22 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
       });
 
       if (res && res.success) {
-        Alert.alert('🎉 Password Reset!', 'Your password has been reset successfully. You can now sign in.');
-        setEmail(forgotEmail.trim());
-        setPassword(newPassword);
+        Alert.alert('🎉 Password Reset!', 'Your password has been reset successfully. Logging you in...');
+        
+        const loginRes = await login(forgotEmail.trim(), newPassword);
+        
         setIsForgotModalOpen(false);
         setForgotStep(1);
         setForgotOtp('');
+        
+        if (loginRes.success) {
+          navigation.replace('Tabs', { screen: 'Home' });
+        } else {
+          Alert.alert('Login Failed', loginRes.error || 'Please sign in with your new password.');
+          setEmail(forgotEmail.trim());
+          setPassword(newPassword);
+        }
+        
         setNewPassword('');
         setConfirmPassword('');
       } else {
@@ -147,7 +153,7 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
 
           <Text style={[styles.title, { color: theme.text }]}>Welcome Back</Text>
           <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-            Sign in with your registered email and password to book and track your phone repairs.
+            Sign in with your registered email or mobile number and password to book and track your phone repairs.
           </Text>
 
           <View style={styles.formContainer}>
@@ -156,9 +162,9 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
               <Mail size={20} color={theme.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={[styles.textInput, { color: theme.text }]}
-                placeholder="Email address"
+                placeholder="Email or Mobile Number"
                 placeholderTextColor={theme.textMuted}
-                keyboardType="email-address"
+                keyboardType="default"
                 autoCapitalize="none"
                 autoCorrect={false}
                 value={email}
@@ -304,14 +310,6 @@ export default function LoginScreen({ navigation }: RootStackScreenProps<'Login'
                     maxLength={6}
                   />
                 </View>
-
-                {debugOtp && (
-                  <View style={[styles.debugOtpBanner, { backgroundColor: theme.primarySoft }]}>
-                    <Text style={[styles.debugOtpText, { color: theme.primary }]}>
-                      ✨ Test OTP Code: {debugOtp}
-                    </Text>
-                  </View>
-                )}
 
                 <TouchableOpacity 
                   style={[styles.modalActionBtn, { backgroundColor: theme.primary }, forgotLoading && { opacity: 0.6 }]}

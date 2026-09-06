@@ -11,12 +11,18 @@ class RepairController extends Controller
 {
     public function index(Request $request)
     {
-        $userId = $request->user_id ?? ($request->user() ? $request->user()->id : null);
-        $query = Repair::with('user')->orderBy('created_at', 'desc');
-
-        if ($userId) {
-            $query->where('user_id', $userId);
+        $user = auth('sanctum')->user();
+        
+        if (!$user) {
+            return response()->json([
+                'success' => true,
+                'repairs' => [],
+                'data'    => [],
+            ], 200);
         }
+
+        $userId = $user->id;
+        $query = Repair::with('user')->where('user_id', $userId)->orderBy('created_at', 'desc');
 
         $repairs = $query->get()->map(function ($r) {
             return [
