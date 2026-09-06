@@ -19,6 +19,7 @@ import BuyPhonesScreen from '../screens/BuyPhonesScreen';
 import SellPhoneScreen from '../screens/SellPhoneScreen';
 import AdminAddPhoneScreen from '../screens/AdminAddPhoneScreen';
 import AdminBuyRequestsScreen from '../screens/AdminBuyRequestsScreen';
+import PhoneDetailsScreen from '../screens/PhoneDetailsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -132,6 +133,13 @@ export default function AppNavigator() {
         <Stack.Screen 
           name="SellPhone" 
           component={SellPhoneScreen} 
+          options={{ 
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="PhoneDetails" 
+          component={PhoneDetailsScreen} 
           options={{ 
             headerShown: false,
           }}

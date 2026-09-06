@@ -20,6 +20,7 @@ export type RootStackParamList = {
   SellPhone: undefined;
   AdminAddPhone: undefined;
   AdminBuyRequests: undefined;
+  PhoneDetails: { phone: import('../lib/api').ApiUsedPhone };
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

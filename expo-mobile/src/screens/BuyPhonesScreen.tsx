@@ -29,13 +29,6 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
   const [selectedBrand, setSelectedBrand] = useState<string>('All');
   const [selectedCondition, setSelectedCondition] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
-  // Checkout Modal State
-  const [selectedPhone, setSelectedPhone] = useState<ApiUsedPhone | null>(null);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
-  const [address, setAddress] = useState<string>(user?.addresses?.[0]?.line || '');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('upi');
-  const [submitting, setSubmitting] = useState(false);
 
   const fetchPhones = useCallback(async () => {
     try {
@@ -77,37 +70,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
   }, [phones, selectedBrand, selectedCondition, searchQuery]);
 
   const handleOpenBuy = (phone: ApiUsedPhone) => {
-    setSelectedPhone(phone);
-    setModalVisible(true);
-  };
-
-  const handlePlaceOrder = async () => {
-    if (!selectedPhone || !user) return;
-    setSubmitting(true);
-    try {
-      const res = await api.submitBuyRequest(selectedPhone.id, {
-        customer_name: user.name || `${user.first_name} ${user.last_name}`,
-        customer_phone: user.phone,
-        customer_email: user.email,
-        address,
-        payment_method: paymentMethod,
-        user_id: user.id,
-      });
-      setModalVisible(false);
-      if (res.success) {
-        Alert.alert(
-          "Order Confirmed! 🎉",
-          `Your order for ${selectedPhone.brand} ${selectedPhone.model} (${selectedPhone.storage}) has been placed.\nEstimated Delivery: 2-3 Days.\nFree 6-month warranty included!`,
-          [{ text: "Done", onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert("Error", res.error || 'Failed to place order.');
-      }
-    } catch (err) {
-      Alert.alert("Error", 'Something went wrong. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+    navigation.navigate('PhoneDetails', { phone });
   };
 
   return (
@@ -208,7 +171,8 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
             const savings = phone.original_price - phone.price;
 
             return (
-              <Card key={phone.id} style={styles.productCard}>
+              <TouchableOpacity key={phone.id} activeOpacity={0.9} onPress={() => handleOpenBuy(phone)}>
+                <Card style={styles.productCard}>
                 <View style={styles.productTopRow}>
                   {phone.images && phone.images.length > 0 ? (
                     <Image 
@@ -265,6 +229,7 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
                   </TouchableOpacity>
                 </View>
               </Card>
+            </TouchableOpacity>
             );
           })}
 
@@ -281,128 +246,6 @@ export default function BuyPhonesScreen({ navigation }: RootStackScreenProps<'Bu
         )}
 
       </ScrollView>
-
-      {/* Checkout / Order Sheet Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Confirm Purchase</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
-                <X size={22} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            {selectedPhone && (
-              <ScrollView style={{ maxHeight: 400 }}>
-                {/* Item Details */}
-                <View style={[styles.modalItemCard, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-                  {selectedPhone.images && selectedPhone.images.length > 0 ? (
-                    <Image 
-                      source={{ uri: selectedPhone.images[0].startsWith('http') ? selectedPhone.images[0] : `http://127.0.0.1:8000${selectedPhone.images[0]}` }} 
-                      style={{ width: 48, height: 48, borderRadius: 12 }} 
-                    />
-                  ) : (
-                    <Smartphone size={28} color={theme.primary} />
-                  )}
-                  <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.modalItemTitle, { color: theme.text }]}>{selectedPhone.brand} {selectedPhone.model}</Text>
-                    <Text style={[styles.modalItemSpecs, { color: theme.textSecondary }]}>
-                      {selectedPhone.storage} • {selectedPhone.color} • {selectedPhone.condition} Condition
-                    </Text>
-                    <Text style={[styles.modalItemPrice, { color: theme.primary }]}>{inr(selectedPhone.price)}</Text>
-                  </View>
-                </View>
-
-                {/* Delivery Address */}
-                <Text style={[styles.modalSectionLabel, { color: theme.text }]}>Delivery Address</Text>
-                <View style={[styles.modalAddressBox, { backgroundColor: theme.background, borderColor: theme.cardBorder }]}>
-                  <Truck size={18} color={theme.primary} style={{ marginRight: 8, marginTop: 2 }} />
-                  <TextInput
-                    style={[{ flex: 1, fontSize: 13, color: theme.text, padding: 0 }]}
-                    placeholder="Enter delivery address"
-                    placeholderTextColor={theme.textMuted}
-                    value={address}
-                    onChangeText={setAddress}
-                  />
-                </View>
-
-                {/* Payment Method */}
-                <Text style={[styles.modalSectionLabel, { color: theme.text }]}>Payment Method</Text>
-                <View style={styles.paymentOptions}>
-                  {[
-                    { id: 'upi', label: 'UPI / Instant Online', icon: Sparkles },
-                    { id: 'cod', label: 'Cash on Delivery (COD)', icon: Truck },
-                    { id: 'card', label: 'Credit / Debit Card', icon: CreditCard },
-                  ].map((pay) => (
-                    <TouchableOpacity
-                      key={pay.id}
-                      style={[
-                        styles.paymentPill,
-                        { backgroundColor: theme.background, borderColor: theme.cardBorder },
-                        paymentMethod === pay.id && { borderColor: theme.primary, backgroundColor: theme.primarySoft }
-                      ]}
-                      onPress={() => setPaymentMethod(pay.id as any)}
-                      activeOpacity={0.7}
-                    >
-                      <pay.icon size={18} color={paymentMethod === pay.id ? theme.primary : theme.textSecondary} />
-                      <Text style={[
-                        styles.paymentPillText,
-                        { color: theme.text },
-                        paymentMethod === pay.id && { color: theme.primary, fontWeight: '700' }
-                      ]}>{pay.label}</Text>
-                      {paymentMethod === pay.id && <Check size={16} color={theme.primary} style={{ marginLeft: 'auto' }} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Total Summary */}
-                <View style={[styles.modalPriceSummary, { borderTopColor: theme.divider }]}>
-                  <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Price</Text>
-                    <Text style={[styles.summaryVal, { color: theme.text }]}>{inr(selectedPhone.price)}</Text>
-                  </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delivery Fee</Text>
-                    <Text style={{ color: '#16a34a', fontWeight: '700', fontSize: 13 }}>FREE</Text>
-                  </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>6-Month Warranty</Text>
-                    <Text style={{ color: '#16a34a', fontWeight: '700', fontSize: 13 }}>INCLUDED</Text>
-                  </View>
-                  <View style={[styles.summaryDivider, { backgroundColor: theme.divider }]} />
-                  <View style={styles.summaryRow}>
-                    <Text style={[styles.summaryTotalLabel, { color: theme.text }]}>Total Amount</Text>
-                    <Text style={[styles.summaryTotalVal, { color: theme.primary }]}>{inr(selectedPhone.price)}</Text>
-                  </View>
-                </View>
-              </ScrollView>
-            )}
-
-            {/* Place Order CTA */}
-            <TouchableOpacity
-              style={[styles.confirmOrderBtn, { backgroundColor: theme.primary, opacity: submitting ? 0.6 : 1 }]}
-              onPress={handlePlaceOrder}
-              disabled={submitting}
-              activeOpacity={0.8}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.confirmOrderBtnText}>
-                  Place Order • {selectedPhone ? inr(selectedPhone.price) : ''}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
     </SafeAreaView>
   );
 }
