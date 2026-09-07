@@ -200,10 +200,17 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Confirm Purchase</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
-                <X size={22} color={theme.text} />
+            <View style={styles.modalTopBar}>
+              <View style={{ flex: 1, paddingRight: 10 }}>
+                <Text style={[styles.modalHeading, { color: theme.text }]}>
+                  Confirm Purchase
+                </Text>
+                <Text style={[styles.modalSubheading, { color: theme.textSecondary }]}>
+                  Review your order details below
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeIconBtn}>
+                <X size={20} color={theme.textMuted} />
               </TouchableOpacity>
             </View>
             
@@ -357,10 +364,11 @@ const styles = StyleSheet.create({
   buyNowBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14 },
   buyNowText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: '800' },
-  modalCloseBtn: { padding: 4 },
+  modalContent: { borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 24, paddingBottom: 40 },
+  modalTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, width: '100%' },
+  modalHeading: { fontSize: 18, fontWeight: '800' },
+  modalSubheading: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  closeIconBtn: { padding: 4, backgroundColor: '#f1f5f9', borderRadius: 20 },
   modalItemCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
   modalItemTitle: { fontSize: 15, fontWeight: '700' },
   modalItemSpecs: { fontSize: 12, marginTop: 2 },

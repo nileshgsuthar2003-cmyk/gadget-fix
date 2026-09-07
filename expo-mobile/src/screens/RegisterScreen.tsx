@@ -284,20 +284,27 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
       </KeyboardAvoidingView>
 
       {/* OTP Verification Modal */}
-      <Modal visible={showOtpModal} transparent animationType="fade">
+      <Modal visible={showOtpModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalContent}
           >
             <View style={[styles.modalBox, { backgroundColor: theme.surface }]}>
-              <View style={[styles.modalIconContainer, { backgroundColor: theme.primarySoft }]}>
-                <Mail size={32} color={theme.primary} />
+              {/* Modal Header */}
+              <View style={styles.modalTopBar}>
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.modalHeading, { color: theme.text }]}>
+                    Verification Required
+                  </Text>
+                  <Text style={[styles.modalSubheading, { color: theme.textSecondary }]}>
+                    We've sent a 6-digit code to {email}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowOtpModal(false)} style={styles.closeIconBtn}>
+                  <X size={20} color={theme.textMuted} />
+                </TouchableOpacity>
               </View>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Verification Required</Text>
-              <Text style={[styles.modalText, { color: theme.textSecondary }]}>
-                We've sent a 6-digit verification code to {email}. Please enter it below to verify your account.
-              </Text>
               
               <TextInput
                 style={[styles.otpInput, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
@@ -474,41 +481,43 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 24,
+    justifyContent: 'flex-end',
   },
   modalContent: {
     width: '100%',
   },
   modalBox: {
-    borderRadius: 24,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     padding: 24,
+    paddingBottom: 40,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowRadius: 10,
     elevation: 10,
   },
-  modalIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  modalTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    width: '100%',
+    marginBottom: 20,
   },
-  modalTitle: {
-    fontSize: 22,
+  modalHeading: {
+    fontSize: 18,
     fontWeight: '800',
-    marginBottom: 8,
-    textAlign: 'center',
   },
-  modalText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 20,
+  modalSubheading: {
+    fontSize: 13,
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  closeIconBtn: {
+    padding: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 20,
   },
   otpInput: {
     width: '100%',
