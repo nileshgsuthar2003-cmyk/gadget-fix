@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator, Modal
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Wrench, User, Mail, Lock, Eye, EyeOff, ChevronDown } from 'lucide-react-native';
+import { Wrench, User, Mail, Lock, Eye, EyeOff, ChevronDown, X } from 'lucide-react-native';
 import { RootStackScreenProps } from '../navigation/types';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
