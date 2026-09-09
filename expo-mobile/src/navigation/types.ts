@@ -21,6 +21,8 @@ export type RootStackParamList = {
   AdminAddPhone: undefined;
   AdminBuyRequests: undefined;
   PhoneDetails: { phone: import('../lib/api').ApiUsedPhone };
+  Terms: undefined;
+  Privacy: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

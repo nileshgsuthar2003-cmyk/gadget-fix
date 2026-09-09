@@ -20,6 +20,8 @@ import SellPhoneScreen from '../screens/SellPhoneScreen';
 import AdminAddPhoneScreen from '../screens/AdminAddPhoneScreen';
 import AdminBuyRequestsScreen from '../screens/AdminBuyRequestsScreen';
 import PhoneDetailsScreen from '../screens/PhoneDetailsScreen';
+import TermsScreen from '../screens/TermsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -157,6 +159,16 @@ export default function AppNavigator() {
           options={{ 
             headerShown: false,
           }}
+        />
+        <Stack.Screen 
+          name="Terms" 
+          component={TermsScreen} 
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="Privacy" 
+          component={PrivacyScreen} 
+          options={{ headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

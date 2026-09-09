@@ -64,6 +64,7 @@ export function DesktopNav() {
           </div>
           <div>
             <span className="text-xl font-extrabold tracking-tight text-foreground">Cell Care</span>
+          </div>
         </Link>
 
         {/* Center Nav Links */}
@@ -196,9 +197,9 @@ export function DesktopFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between border-t border-border/80 pt-6 text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} Cell Care Technologies Inc. All rights reserved.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
-            <a href="#" className="hover:text-foreground">Privacy Policy</a>
-            <a href="#" className="hover:text-foreground">Terms of Service</a>
-            <a href="#" className="hover:text-foreground">Warranty Policy</a>
+            <Link to="/privacy" className="hover:text-foreground">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-foreground">Terms of Service</Link>
+            <Link to="/return-policy" className="hover:text-foreground">Return Policy</Link>
           </div>
         </div>
       </div>

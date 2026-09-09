@@ -652,6 +652,15 @@ export const api = {
       return { success: false, error: err?.message || 'Failed to update status' };
     }
   },
+
+  // Settings & Policies
+  async getSettings() {
+    try {
+      return await request<{ success: boolean; settings: Record<string, string> }>('/settings');
+    } catch (err: any) {
+      return { success: false, settings: {} };
+    }
+  },
 };
 
 export interface ApiBanner {

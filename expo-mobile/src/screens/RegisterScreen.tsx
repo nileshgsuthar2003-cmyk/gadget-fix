@@ -277,7 +277,9 @@ export default function RegisterScreen({ navigation }: RootStackScreenProps<'Reg
 
           <View style={{ height: 24 }} />
           <Text style={[styles.termsText, { color: theme.textMuted }]}>
-            By registering you agree to Cell Care's <Text style={{ color: theme.primary }}>Terms</Text> and <Text style={{ color: theme.primary }}>Privacy Policy</Text>.
+            By registering you agree to Cell Care's{' '}
+            <Text onPress={() => navigation.navigate('Terms')} style={{ color: theme.primary }}>Terms</Text> and{' '}
+            <Text onPress={() => navigation.navigate('Privacy')} style={{ color: theme.primary }}>Privacy Policy</Text>.
           </Text>
 
         </ScrollView>

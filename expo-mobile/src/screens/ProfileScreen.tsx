@@ -475,7 +475,7 @@ export default function ProfileScreen() {
 
             {/* Help & Support */}
             <TouchableOpacity 
-              style={styles.menuRow}
+              style={[styles.menuRow, { borderBottomColor: theme.divider }]}
               onPress={() => Alert.alert(
                 'Cell Care Customer Care 📞',
                 'Toll-Free Helpline: 1800-FIX-PHONE (1800-349-7466)\nDirect Support: +91 98765 43210\nEmail: support@cellcare.com\nHours: 9:00 AM – 9:00 PM (All 7 Days)'
@@ -486,6 +486,36 @@ export default function ProfileScreen() {
                 <HelpCircle size={18} color={theme.primary} />
               </View>
               <Text style={[styles.menuTitle, { color: theme.text }]}>Help & Support</Text>
+              <View style={styles.menuRightSide}>
+                <ChevronRight size={18} color={theme.textMuted} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Terms & Conditions */}
+            <TouchableOpacity 
+              style={[styles.menuRow, { borderBottomColor: theme.divider }]}
+              onPress={() => navigation.navigate('Terms')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIconBox, { backgroundColor: theme.primarySoft }]}>
+                <ChevronRight size={18} color={theme.primary} />
+              </View>
+              <Text style={[styles.menuTitle, { color: theme.text }]}>Terms & Conditions</Text>
+              <View style={styles.menuRightSide}>
+                <ChevronRight size={18} color={theme.textMuted} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Privacy Policy */}
+            <TouchableOpacity 
+              style={styles.menuRow}
+              onPress={() => navigation.navigate('Privacy')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.menuIconBox, { backgroundColor: theme.primarySoft }]}>
+                <ChevronRight size={18} color={theme.primary} />
+              </View>
+              <Text style={[styles.menuTitle, { color: theme.text }]}>Privacy Policy</Text>
               <View style={styles.menuRightSide}>
                 <ChevronRight size={18} color={theme.textMuted} />
               </View>

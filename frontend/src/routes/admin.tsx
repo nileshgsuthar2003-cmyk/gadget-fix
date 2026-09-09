@@ -178,6 +178,9 @@ const iconComponentMap: Record<string, any> = {
   wrench: Wrench,
 };
 
+import { Settings as SettingsIcon } from "lucide-react";
+import { SettingsTab } from "../components/admin/SettingsTab";
+
 function AdminPage() {
   // Admin Authentication State
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
@@ -1274,6 +1277,7 @@ function AdminPage() {
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, badge: null, category: "MAIN" },
     { id: "repairs", label: "Repairs & Bookings", icon: ClipboardList, badge: `${repairList.length}`, category: "MAIN" },
     { id: "users", label: "Users & Accounts", icon: Users, badge: `${userList.length}`, category: "MANAGEMENT" },
+    { id: "settings", label: "Settings & Policies", icon: SettingsIcon, badge: null, category: "MANAGEMENT" },
   ];
 
   return (
@@ -2758,6 +2762,8 @@ function AdminPage() {
 
             </div>
           )}
+          
+          {activeTab === "settings" && <SettingsTab />}
 
         </main>
       </div>

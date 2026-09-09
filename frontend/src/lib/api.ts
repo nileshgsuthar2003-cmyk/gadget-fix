@@ -420,4 +420,16 @@ export const api = {
       body: JSON.stringify({ status }),
     });
   },
+
+  // Settings & Policies
+  async getSettings() {
+    return apiRequest<{ success: boolean; settings: Record<string, string> }>("/settings");
+  },
+
+  async updateSettings(data: { terms_policy?: string; privacy_policy?: string; return_policy?: string }) {
+    return apiRequest<{ success: boolean; message: string }>("/admin/settings", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
 };

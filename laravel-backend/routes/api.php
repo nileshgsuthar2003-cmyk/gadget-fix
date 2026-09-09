@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\BannerController;
 use App\Http\Controllers\Api\UsedPhoneController;
+use App\Http\Controllers\Api\SettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -17,6 +18,9 @@ use App\Http\Controllers\Api\UsedPhoneController;
 */
 
 // Public File & Photo Upload Endpoint (Stores in public/uploads)
+Route::get('/settings', [SettingsController::class, 'index']);
+Route::put('/admin/settings', [SettingsController::class, 'update']);
+
 Route::post('/upload', [UploadController::class, 'upload']);
 
 // Public Promotional Banners (For Mobile App & Web Home)
