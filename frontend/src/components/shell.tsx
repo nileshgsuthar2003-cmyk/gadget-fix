@@ -133,6 +133,8 @@ export function DesktopNav() {
   );
 }
 
+export const DesktopHeader = DesktopNav;
+
 /* ---------- Desktop Footer ---------- */
 
 export function DesktopFooter() {
