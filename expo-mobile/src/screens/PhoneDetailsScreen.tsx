@@ -242,7 +242,7 @@ export default function PhoneDetailsScreen({ route, navigation }: RootStackScree
                   <MapPin size={28} color={theme.textMuted} style={{ marginBottom: 8 }} />
                   <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 4 }}>No Saved Addresses</Text>
                   <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: 'center', marginBottom: 12 }}>Please add a delivery address in your profile to proceed.</Text>
-                  <TouchableOpacity onPress={() => { setModalVisible(false); navigation.navigate('Profile'); }} style={{ backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
+                  <TouchableOpacity onPress={() => { setModalVisible(false); (navigation as any).navigate('MainTabs', { screen: 'Profile' }); }} style={{ backgroundColor: theme.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}>
                     <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Go to Profile</Text>
                   </TouchableOpacity>
                 </View>

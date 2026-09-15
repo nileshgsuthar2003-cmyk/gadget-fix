@@ -10,18 +10,19 @@ const expoHostUri =
 const autoDetectedHost = expoHostUri ? expoHostUri.split(':')[0] : null;
 
 // Dynamic Environment Configuration (Loaded from .env / EXPO_PUBLIC_*)
-const DEV_LAN_IP = autoDetectedHost || process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.125.174.212';
+const DEFAULT_PORT = process.env.EXPO_PUBLIC_API_PORT || '5000';
+const DEV_LAN_IP = autoDetectedHost || process.env.EXPO_PUBLIC_DEV_LAN_IP || '10.103.185.212';
 const ENV_API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const API_BASE_URL =
-  (autoDetectedHost ? `http://${autoDetectedHost}:8000/api` : null) ||
   ENV_API_URL ||
+  (autoDetectedHost ? `http://${autoDetectedHost}:${DEFAULT_PORT}/api` : null) ||
   Platform.select({
-    android: `http://${DEV_LAN_IP}:8000/api`,
-    ios: `http://${DEV_LAN_IP}:8000/api`,
-    default: `http://localhost:8000/api`,
+    android: `http://${DEV_LAN_IP}:${DEFAULT_PORT}/api`,
+    ios: `http://${DEV_LAN_IP}:${DEFAULT_PORT}/api`,
+    default: `http://localhost:${DEFAULT_PORT}/api`,
   }) ||
-  `http://${DEV_LAN_IP}:8000/api`;
+  `http://${DEV_LAN_IP}:${DEFAULT_PORT}/api`;
 
 export const BACKEND_URL = API_BASE_URL.replace('/api', '');
 
@@ -106,20 +107,32 @@ export interface ApiRepair {
   payment?: string;
 }
 
-const CANDIDATE_BASE_URLS = Array.from(
+const candidatePorts = Array.from(new Set([DEFAULT_PORT, '5000', '8000'])).filter(Boolean);
+const candidateHosts = Array.from(
   new Set([
-    API_BASE_URL,
-    autoDetectedHost ? `http://${autoDetectedHost}:8000/api` : '',
-    ENV_API_URL || '',
-    `http://${DEV_LAN_IP}:8000/api`,
-    'http://10.125.174.212:8000/api',
+    autoDetectedHost,
+    DEV_LAN_IP,
+    '10.103.185.212',
     Platform.select({
-      android: 'http://10.0.2.2:8000/api',
-      ios: 'http://localhost:8000/api',
-      default: 'http://127.0.0.1:8000/api',
-    }) as string,
+      android: '10.0.2.2',
+      ios: 'localhost',
+      default: '127.0.0.1',
+    }),
+    '127.0.0.1',
+    'localhost',
   ])
-).filter(Boolean);
+).filter(Boolean) as string[];
+
+const generatedCandidateUrls: string[] = [API_BASE_URL];
+if (ENV_API_URL) generatedCandidateUrls.push(ENV_API_URL);
+for (const p of candidatePorts) {
+  for (const h of candidateHosts) {
+    generatedCandidateUrls.push(`http://${h}:${p}/api`);
+  }
+}
+
+const CANDIDATE_BASE_URLS = Array.from(new Set(generatedCandidateUrls));
+let activeWorkingBaseUrl = API_BASE_URL;
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
@@ -128,9 +141,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as any || {}),
   };
 
-  const primaryUrl = `${API_BASE_URL}${endpoint}`;
+  const primaryUrl = `${activeWorkingBaseUrl}${endpoint}`;
 
-  // 1. Try Primary Active LAN IP first with direct native fetch
+  // 1. Try Primary / Active working LAN IP first with direct native fetch
   try {
     const res = await fetch(primaryUrl, {
       ...options,
@@ -142,12 +155,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       return data;
     }
   } catch (primaryErr: any) {
-    console.warn(`[Mobile API] Primary URL (${primaryUrl}) failed:`, primaryErr?.message || primaryErr);
+    // Only warn if we're falling back
   }
 
-  // 2. Fallback candidates if physical LAN IP had an issue (e.g. localhost for simulator)
+  // 2. Fallback candidates (handles port changes e.g. 5000 vs 8000, Wi-Fi IP changes, simulator vs device)
   for (const base of CANDIDATE_BASE_URLS) {
-    if (base === API_BASE_URL) continue;
+    if (base === activeWorkingBaseUrl) continue;
     try {
       const url = `${base}${endpoint}`;
       const res = await fetch(url, {
@@ -156,6 +169,8 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       });
 
       if (res.ok || res.status === 422 || res.status === 401 || res.status === 404 || res.status === 201) {
+        console.log(`[Mobile API] Successfully connected to fallback server: ${base}`);
+        activeWorkingBaseUrl = base;
         const data = await res.json();
         return data;
       }
@@ -164,7 +179,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
   }
 
-  throw new Error(`Could not connect to ${endpoint} on server ${API_BASE_URL}`);
+  throw new Error(`Could not connect to ${endpoint} on server ${activeWorkingBaseUrl}`);
 }
 
 export const api = {
@@ -408,7 +423,7 @@ export const api = {
         type,
       });
 
-      const response = await fetch(`${API_BASE_URL}/upload`, {
+      const response = await fetch(`${activeWorkingBaseUrl}/upload`, {
         method: 'POST',
         body: formData,
         headers: {
